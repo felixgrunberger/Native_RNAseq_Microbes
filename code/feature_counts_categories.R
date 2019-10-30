@@ -151,10 +151,11 @@ gg_total_counts <- ggplot(data = gene_table_counts, aes(x = sequencing_set, y = 
   scale_color_manual(values = heat_color_npg) +
   theme_Publication_white() +
   xlab("") +
-  ylab("Mapped reads to feature [M counts]") +
+  ylab("Log10 Mapped reads") +
   ggtitle("") +
   labs(fill = "") +
   coord_flip() +
+  guides(color = FALSE, fill = guide_legend("")) +
   theme(axis.text.y = element_text(face = "italic")) +
   theme(panel.grid.major.y = element_blank()) +
   scale_y_log10(expand = c(0,0, 0.1, 0), breaks = c(0, 100, 1000, 10000, 100000, 1000000))
