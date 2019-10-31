@@ -6,34 +6,16 @@
 ###########################################################################
 ###########################################################################
 
-## @knitr polya_tail_lengths
 
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 # LOAD LIBRARIES
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-packages <- c("DESeq2", "ggpubr", "rtracklayer", "ggeconodist", "tidyverse", "here", "ggthemes", "data.table", "ggExtra", "Rsamtools", "GenomicAlignments", "seqTools", "Rsubread", "ape", "DT", "ggpubr", "ggridges", "ggsci")
+packages <- c("DESeq2", "ggpubr", "rtracklayer", "ggeconodist", 
+              "tidyverse", "here", "ggthemes", "data.table", "ggExtra", 
+              "Rsamtools", "GenomicAlignments", "seqTools", "Rsubread", 
+              "ape", "DT", "ggpubr", "ggridges", "ggsci", "readxl")
 invisible(lapply(packages, require, character.only = TRUE))
 
-library(viridis)
-library(tidyverse)
-library(here)
-library(ggthemes)
-library(data.table)
-library(ggExtra)
-library(seqTools)
-library(Rsamtools)
-library(GenomicAlignments)
-library(grid)
-library(Rsubread)
-library(ape)
-library(DT)
-library(ggsci)
-library(ggridges)
-library(ggpubr)
-library(DESeq2)
-library(heatmaply)
-library(rtracklayer)
-library(readxl)
 
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 # LOAD FUNCTIONS
@@ -46,6 +28,49 @@ get_density <- function(x, y, ...) {
   iy <- findInterval(y, dens$y)
   ii <- cbind(ix, iy)
   return(dens$z[ii])
+}
+
+#...............................DESeq2 transcript abundance transformation
+deseq2_estimation_and_rlog <- function(input_counts_table){
+  colnames_data <- c("sequencing")
+  colData <- matrix(ncol = 1, nrow = 2)
+  colnames(colData) <- colnames_data 
+  colData <- data.table(colData) %>%
+    mutate(sequencing = as.factor(c("nanopore", "illumina"))) %>%
+    as_tibble()
+  
+  # > make DESeq2 object
+  dds <- DESeq2::DESeqDataSetFromMatrix(countData = input_counts_table[,1:2], 
+                                        colData = colData,
+                                        design = ~sequencing)
+  
+  # > prefilter data set: remove rows (genes) with no counts
+  dds     <- dds[ rowSums(counts(dds)) > 1, ]
+  # > rld transformation
+  rld      <- DESeq2::rlog( dds ,blind = T)
+  # > plot object
+  plot_rld <- as_tibble(assay(rld)[, 1:2]) 
+}
+
+#...............................plit transcript abundace datas for Illumina and ONT
+transcript_abundace_ggcorr <- function(input_count_table){
+  ggplot(data = input_count_table, aes(x = ont_counts, y = illumina_counts, color = density)) +
+    geom_abline(alpha = 0.5, linetype = "dashed", color = "black", size = 1) +
+    scale_fill_gradientn(colours = heat_color_npg) +
+    scale_color_gradientn(colours = heat_color_npg) +
+    geom_point(alpha = 0.3, size = 2) +
+    theme_Publication_white() +
+    guides(alpha = F) +
+    guides(fill = guide_colorbar(barwidth = 5, barheight = 0.5, ticks = T, label = T),
+           color = guide_colorbar(barwidth = 5, barheight = 0.5, ticks = T, label = T)) +
+    ylab("Expression level of Illumina RNAseq \n(rlog counts)") +
+    xlab("Expression level of native RNAseq \n(rlog counts)") +
+    ggtitle("") +
+    scale_x_continuous(limits = c(0,17)) + 
+    scale_y_continuous(limits = c(0,17)) + 
+    coord_equal() +
+    stat_cor(method = "spearman", label.x = 0, label.y = 16,color = "black") +
+    guides(color = guide_colorbar(title = "counts",barwidth = 15, barheight = 0.5, ticks = T, label = T)) 
 }
 
 
@@ -82,76 +107,98 @@ theme_Publication_white <- function(base_size=14) {
 
 
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-# PFU
+# LOAD AND TIDY DATA
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
+#...................................ONT transcript abundance data for TEX samples 
+counts_files_tex <- paste(here("data/tidy_data/"), list.files(here("data/tidy_data/"),pattern = "_tex_gene_table"), sep = "")
 
-#...................................for nanopore sequencing << #
-load("/Volumes/Lacie/direct_rna_seq/data/shinynano_data/181219_pfu_all/Files/full_gene_table181219_pfu_all")
+#...................................get sample names
+sample_names <- unlist(lapply(counts_files_tex, FUN=function(x){str_split_fixed(str_split_fixed(x, "_gene", 2)[1],"tidy_data/",2)[2]}))
 
-#...................................from illumina sequencing << #
-gtf_file <- paste("/Volumes/Lacie/direct_rna_seq/data/genome_data/CP023154.gtf", sep = "")
+#...................................write to tsv files
+for (i in seq_along(sample_names)){
+  load(counts_files_tex[i])
+  full_gene_table <- full_gene_table %>%
+    dplyr::select(GeneID, counts) %>%
+    arrange(desc(counts))
+  write_tsv(full_gene_table, path = paste(here("data/counts_data/"),sample_names[i],"_ONT.tsv", sep = ""))
+}
 
-#bamFiles_il <- "/Users/felixgrunberger/Documents/R/differential_0739/data/mapping_data/star/S305_01_52_1_S1_L008_R1_001_rna_trimmed/S305_01_52_1_S1_L008_R1_001_rna_trimmed_Aligned.sortedByCoord.out.bam"
-bamFiles_il <- "/Volumes/TOSHIBA/backup_lacie_190320/annogesic_linux/ANNOgesic/input/BAMs/BAMs_map_reference_genomes/fragment/FRAG_trim.bam"
-names(bamFiles_il) <- "illumina"
-illumina_rnaseq_counts <- featureCounts(bamFiles_il,verbose = F,annot.ext = gtf_file, isGTFAnnotationFile = T, nthreads = 4,GTF.featureType = "CDS", allowMultiOverlap = F, isLongRead = F)$counts
-illumina_rnaseq_counts_table <- illumina_rnaseq_counts %>%
-  as.data.frame() %>%
-  rownames_to_column(var = "gene") %>%
-  dplyr::rename(illumina_counts = 2) 
+#...................................get Illumina comparison data as described in the M&M section
+# > Pyrococcus furiosus mixed RNA-seq
+# > Haloferax volcanii mixed RNA-seq
+# > Escherichia coli 
 
-#......annotate with old names
-old_new <- read_excel("/Users/felixgrunberger/Downloads/Table_2_Next Generation DNA-Seq and Differential RNA-Seq Allow Re-annotation of the Pyrococcus furiosus DSM 3638 Genome and Provide Insights Into Arch.XLSX", skip = 3, col_names = c("new", "start", "end", "old_r", "old_rs", "old_rse", "old", "new2", "name", "x")) %>%
-  dplyr::select(new, start, end, old, name)
+# > features were counted from bam files using featurecounts method (BAM files too large to upload)
+# > stored as count tables with gene identifiers and rpm counts
 
-illumina_rnaseq_counts_table_rpm <- illumina_rnaseq_counts_table %>%
-  mutate(total_reads = sum(illumina_counts)/1000000, rpm = round(illumina_counts / total_reads, digits = 1)) %>%
-  left_join(old_new, by = c("gene" = "new")) %>%
-  mutate(old_name = old, annotation = name) %>%
-  dplyr::select(gene, rpm, old_name, annotation) %>%
-  arrange(desc(rpm))
 
-write_tsv(illumina_rnaseq_counts_table_rpm, path = "/Users/felixgrunberger/Desktop/rpm_pyrocoocus.tsv")
 
-#...................................combine << #
-nano_illu_counts_pfu <- full_gene_table %>%
+#...................................combine ONT and ILLUMINA DATA FOR COMPARISON
+
+#.................................ESCHERICHIA COLI
+
+#...............................read in files
+ecoli_ILLUMINA <- read_tsv(here("data/counts_data/ecoli_rpm_illumina.tsv")) 
+ecoli_ONT      <- read_tsv(here("data/counts_data/ecoli_tex_ONT.tsv")) 
+
+#...............................combine by gene_id and rename counts for two methods
+ecoli_COUNTS   <- ecoli_ONT %>%
   mutate(gene = substr(GeneID,1,15)) %>%
-  left_join(illumina_rnaseq_counts_table, by = "gene") %>%
-  dplyr::filter(!is.na(counts) == T & !is.na(illumina_counts) == T) %>%
-  dplyr::select(counts, illumina_counts,GeneID)
+  left_join(ecoli_ILLUMINA, by = "gene") %>%
+  mutate(illumina_counts = as.integer(rpm),
+         ont_counts = as.integer(counts)) %>%
+  dplyr::filter(!is.na(ont_counts) == T & !is.na(illumina_counts) == T) %>%
+  dplyr::select(ont_counts, illumina_counts,GeneID)
 
-export_table <- nano_illu_counts_pfu %>%
-  dplyr::select(counts, GeneID) %>%
-  mutate(GeneID = substr(GeneID,1,15)) %>%
-  arrange(desc(counts)) %>%
-  left_join(old_new, by = c("GeneID" = "new")) %>%
-  mutate(Nanopore_counts = counts, old_name = old, annotation = name) %>%
-  dplyr::select(Nanopore_counts, old_name, annotation, GeneID)
-
-#...................................Calculate transcript abundances
-colnames_data <- c("sequencing")
-colData <- matrix(ncol = 1, nrow = 2)
-colnames(colData) <- colnames_data 
-colData <- data.table(colData) %>%
-  mutate(sequencing = as.factor(c("nanopore", "illumina"))) %>%
-  as_tibble()
+#...............................normalize using DESeq2 rlog
+ecoli_abundace_correlation <- deseq2_estimation_and_rlog(ecoli_COUNTS)
 
 
-dds_pfu <- DESeq2::DESeqDataSetFromMatrix(countData = nano_illu_counts_pfu[,1:2], 
-                                          colData = colData,
-                                          design = ~sequencing)
+#.................................PYROCOCCUS FURIOSUS
 
-rownames(dds_pfu) <- nano_illu_counts_pfu$GeneID
+#...............................read in files
+pfu_ILLUMINA <- read_tsv(here("data/counts_data/pfu_rpm_illumina.tsv")) 
+pfu_ONT      <- read_tsv(here("data/counts_data/pfu_tex_ONT.tsv")) 
 
-# prefilter data set: remove rows (genes) with no counts
-dds_pfu <- dds_pfu[ rowSums(counts(dds_pfu)) > 1, ]
-rld <- rlogTransformation( dds_pfu ,blind = T)
-helper_pfu <- as_tibble(assay(rld)[, 1:2]) 
-vsd <- varianceStabilizingTransformation( dds_pfu ,blind = T)
-helper_pfu2 <- as_tibble(assay(vsd)[, 1:2]) 
+#...............................combine by gene_id and rename counts for two methods
+pfu_COUNTS   <- pfu_ONT %>%
+  mutate(gene = substr(GeneID,1,15)) %>%
+  left_join(pfu_ILLUMINA, by = "gene") %>%
+  mutate(illumina_counts = as.integer(rpm),
+         ont_counts = as.integer(counts)) %>%
+  dplyr::filter(!is.na(ont_counts) == T & !is.na(illumina_counts) == T) %>%
+  dplyr::select(ont_counts, illumina_counts,GeneID)
 
-#...................................coloring
+#...............................normalize using DESeq2 rlog
+pfu_abundace_correlation <- deseq2_estimation_and_rlog(pfu_COUNTS)
+
+
+#.................................HALOFERAX VOLCANII
+
+#...............................read in files
+hvo_ILLUMINA <- read_tsv(here("data/counts_data/hvo_rpm_illumina.tsv")) 
+hvo_ONT      <- read_tsv(here("data/counts_data/hvo_tex_ONT.tsv")) 
+
+#...............................combine by gene_id and rename counts for two methods
+hvo_COUNTS   <- hvo_ONT %>%
+  mutate(gene = substr(GeneID,1,15)) %>%
+  left_join(hvo_ILLUMINA, by = "gene") %>%
+  mutate(illumina_counts = as.integer(rpm),
+         ont_counts = as.integer(counts)) %>%
+  dplyr::filter(!is.na(ont_counts) == T & !is.na(illumina_counts) == T) %>%
+  dplyr::select(ont_counts, illumina_counts,GeneID)
+
+#...............................normalize using DESeq2 rlog
+hvo_abundace_correlation <- deseq2_estimation_and_rlog(hvo_COUNTS)
+
+
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+# PLOT USING GGPLOT2
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+#...................................coloring for density
 heat_color_npg <- c(pal_npg()(10)[4],
                     pal_npg()(10)[6],
                     pal_npg()(10)[7],
@@ -159,314 +206,30 @@ heat_color_npg <- c(pal_npg()(10)[4],
                     pal_npg()(10)[1],
                     pal_npg()(10)[8])
 
-helper_pfu$density <- get_density(helper_pfu$counts, helper_pfu$illumina_counts)
-helper_pfu2$density <- get_density(helper_pfu2$counts, helper_pfu2$illumina_counts)
-#...................................plot
-correlation_expression_pfu <- ggplot(data = helper_pfu2, aes(x = counts, y = illumina_counts, color = density)) +
-  geom_abline(alpha = 0.5, linetype = "dashed", color = "black", size = 1) +
-  scale_fill_gradientn(colours = heat_color_npg) +
-  scale_color_gradientn(colours = heat_color_npg) +
-  geom_point(alpha = 0.3, size = 2) +
-  #stat_density2d(aes(alpha=..level.., color = ..level..),geom = "polygon", fill = NA, size = 0.3) + 
-  theme_Publication_white() +
-  guides(alpha = F) +
-  guides(fill = guide_colorbar(barwidth = 5, barheight = 0.5, ticks = T, label = T),
-         color = guide_colorbar(barwidth = 5, barheight = 0.5, ticks = T, label = T)) +
-  xlab("MinION\n[rlog transformed expression]") +
-  ylab("Illumina\n[rlog transformed expression]") +
-  ggtitle("") +
-  scale_x_continuous(limits = c(0,17)) + 
-  scale_y_continuous(limits = c(0,17)) + 
-  coord_equal() +
-  stat_cor(method = "spearman", label.x = 0, label.y = 14,color = "black") 
+#...................................calculate densities
+ecoli_abundace_correlation$density <- get_density(ecoli_abundace_correlation$ont_counts, ecoli_abundace_correlation$illumina_counts)
+pfu_abundace_correlation$density <- get_density(pfu_abundace_correlation$ont_counts, pfu_abundace_correlation$illumina_counts)
+hvo_abundace_correlation$density <- get_density(hvo_abundace_correlation$ont_counts, hvo_abundace_correlation$illumina_counts)
 
-pdf("/Users/felixgrunberger/Desktop/nanopore_native_rna/figures/raw_figures/190802_illumina_native_pfu.pdf", 
+#...................................plot
+correlation_expression_ecoli <- transcript_abundace_ggcorr(ecoli_abundace_correlation)
+correlation_expression_pfu   <- transcript_abundace_ggcorr(pfu_abundace_correlation)
+correlation_expression_hvo   <- transcript_abundace_ggcorr(hvo_abundace_correlation)
+
+#...................................save plots
+#.................................Supplementary Fig. 5a
+pdf(here("figures/ONT_illumina_ecoli.pdf"), 
+    width = 7, height = 7, paper = "special",onefile=FALSE)
+correlation_expression_ecoli
+dev.off()
+#.................................Supplementary Fig. 5b
+pdf(here("figures/ONT_illumina_pfu.pdf"), 
     width = 7, height = 7, paper = "special",onefile=FALSE)
 correlation_expression_pfu
 dev.off()
-
-
-#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-# HVO
-#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-
-#...................................for nanopore sequencing << #
-load("/Volumes/Lacie/direct_rna_seq/data/shinynano_data/190219_hvo_wt_tex/Files/full_gene_table190219_hvo_wt_tex")
-
-#...................................from illumina sequencing << #
-gtf_file <- paste("/Volumes/Lacie/direct_rna_seq/data/genome_data/GCF_000025685.1_ASM2568v1_genomic.gff", sep = "")
-
-
-bamFiles_il <- "/Volumes/Lacie/sra_re_analysis/SRP160422_hvo/data/mapped_data/SRR7811297_1_trimmed/SRR7811297_1_trimmed_sorted.bam"
-names(bamFiles_il) <- "illumina"
-illumina_rnaseq_counts <- featureCounts(bamFiles_il,verbose = F,annot.ext = gtf_file, isGTFAnnotationFile = T, nthreads = 4,GTF.featureType = "CDS",GTF.attrType = "ID", allowMultiOverlap = F, isLongRead = F)$counts
-illumina_rnaseq_counts_table <- illumina_rnaseq_counts %>%
-  as.data.frame() %>%
-  rownames_to_column(var = "gene") %>%
-  dplyr::rename(illumina_counts = 2) 
-glimpse(illumina_rnaseq_counts_table)
-
-glimpse(full_gene_table)
-#...................................combine << #
-nano_illu_counts_hvo <- full_gene_table %>%
-  left_join(illumina_rnaseq_counts_table, by = c("GeneID" = "gene")) %>%
-  dplyr::filter(!is.na(counts) == T & !is.na(illumina_counts) == T) %>%
-  dplyr::select(counts, illumina_counts,GeneID)
-
-#...................................Calculate transcript abundances
-colnames_data <- c("sequencing")
-colData <- matrix(ncol = 1, nrow = 2)
-colnames(colData) <- colnames_data 
-colData <- data.table(colData) %>%
-  mutate(sequencing = as.factor(c("nanopore", "illumina"))) %>%
-  as_tibble()
-
-
-dds_hvo <- DESeq2::DESeqDataSetFromMatrix(countData = nano_illu_counts_hvo[,1:2], 
-                                          colData = colData,
-                                          design = ~sequencing)
-
-rownames(dds_hvo) <- nano_illu_counts_hvo$GeneID
-
-# prefilter data set: remove rows (genes) with no counts
-dds_hvo <- dds_hvo[ rowSums(counts(dds_hvo)) > 1, ]
-rld <- rlogTransformation( dds_hvo ,blind = T)
-helper_hvo <- as_tibble(assay(rld)[, 1:2]) 
-helper_hvo2 <- as_tibble(assay(vsd)[, 1:2]) 
-
-helper_hvo$GeneID <- rownames(assay(rld))
-helper_hvo2$GeneID <- rownames(assay(vsd))
-
-helper_hvo <- helper_hvo %>%
-  left_join(full_gene_table, by = "GeneID")
-helper_hvo2 <- helper_hvo2 %>%
-  left_join(full_gene_table, by = "GeneID")
-
-#...................................coloring
-heat_color_npg <- c(pal_npg()(10)[4],
-                    pal_npg()(10)[6],
-                    pal_npg()(10)[7],
-                    pal_npg()(10)[5],
-                    pal_npg()(10)[1],
-                    pal_npg()(10)[8])
-
-helper_hvo$density <- get_density(helper_hvo$counts.x, helper_hvo$illumina_counts)
-
-#...................................plot
-#correlation_expression_hvo <- 
-correlation_expression_hvo <- ggplot(data = helper_hvo, aes(x = counts.x, y = illumina_counts, color = density, text = sprintf("locus: %s", locus_name))) +
-  geom_abline(alpha = 0.5, linetype = "dashed", color = "black", size = 1) +
-  scale_fill_gradientn(colours = heat_color_npg) +
-  scale_color_gradientn(colours = heat_color_npg) +
-  geom_point(alpha = 0.3, size = 2) +
-  #stat_density2d(aes(alpha=..level.., color = ..level..),geom = "polygon", fill = NA, size = 0.3) + 
-  theme_Publication_white() +
-  guides(alpha = F) +
-  guides(fill = guide_colorbar(barwidth = 5, barheight = 0.5, ticks = T, label = T),
-         color = guide_colorbar(barwidth = 5, barheight = 0.5, ticks = T, label = T)) +
-  xlab("MinION\n[rlog transformed expression]") +
-  ylab("Illumina\n[rlog transformed expression]") +
-  ggtitle("") +
-  scale_x_continuous(limits = c(0,17)) + 
-  scale_y_continuous(limits = c(0,17)) + 
-  coord_equal() +
-  stat_cor(method = "spearman", label.x = 0, label.y = 14,color = "black") 
-
-pdf("/Users/felix/Desktop/nanopore_native_rna/figures/raw_figures/190802_illumina_native_hvo.pdf", 
+#.................................Supplementary Fig. 5c
+pdf(here("figures/ONT_illumina_hvo.pdf"), 
     width = 7, height = 7, paper = "special",onefile=FALSE)
 correlation_expression_hvo
 dev.off()
 
-ggplotly(correlation_expression_hvo, tooltip = "text")
-ggplot(data = helper_hvo2, aes(x = counts.x, y = illumina_counts, color = abs(counts.x - illumina_counts) > 2 , fill =abs(counts.x - illumina_counts) > 2)) +
-  geom_abline(alpha = 1, linetype = "dashed", color = "black", size = 1) +
-  #scale_fill_gradientn(colours = heat_color_npg) +
-  #scale_color_gradientn(colours = heat_color_npg) +
-  geom_point(alpha = 1, size = 2) +
-  #stat_density2d(aes(alpha=..level.., color = ..level..),geom = "polygon", fill = NA, size = 0.3) + 
-  theme_Publication_white() +
-  guides(alpha = F) +
-  guides(fill = guide_colorbar(barwidth = 5, barheight = 0.5, ticks = T, label = T),
-         color = guide_colorbar(barwidth = 5, barheight = 0.5, ticks = T, label = T)) +
-  xlab("MinION\n[rlog transformed expression]") +
-  ylab("Illumina\n[rlog transformed expression]") +
-  ggtitle("") +
-  scale_x_continuous(limits = c(0,17)) + 
-  scale_y_continuous(limits = c(0,17)) + 
-  coord_equal() +
-  stat_cor(method = "spearman",color = "black") 
-
-helper_hvo_biggesterror <- helper_hvo2 %>%
-  dplyr::mutate(errorgroup = ifelse(abs(counts.x - illumina_counts) > 5, "big", "small")) %>%
-  dplyr::filter(errorgroup == "big") %>%
-  dplyr::select(locus_name, GeneID)
-helper_hvo_biggesterror
-
-library(ggsignif)
-
-
-
-ggplot(data = helper_hvo_biggesterror, aes(x = errorgroup, y = counts.x)) +
-  geom_boxplot() +
-  geom_signif(comparisons = list(c("big", "small")), 
-              map_signif_level=TRUE)
-
-#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-# ECOLI
-#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-
-#...................................for nanopore sequencing << #
-load("/Volumes/Lacie/direct_rna_seq/data/shinynano_data/190123_ecoli_all/Files/full_gene_table190123_ecoli_all")
-
-#...................................from illumina sequencing << #
-gtf_file <- paste("/Volumes/Lacie/direct_rna_seq/data/genome_data/e_coli_k12.gff", sep = "")
-
-
-bamFiles_il <- "/Volumes/Lacie/sra_re_analysis/SRP056485_ecoli/data/mapped_data/SRR1927169_trimmed/SRR1927169_trimmed_sorted.bam"
-names(bamFiles_il) <- "illumina"
-illumina_rnaseq_counts <- featureCounts(bamFiles_il,verbose = F,annot.ext = gtf_file, isGTFAnnotationFile = T, nthreads = 4,GTF.featureType = "CDS",GTF.attrType = "ID", allowMultiOverlap = F, isLongRead = F)$counts
-illumina_rnaseq_counts_table <- illumina_rnaseq_counts %>%
-  as.data.frame() %>%
-  rownames_to_column(var = "gene") %>%
-  dplyr::rename(illumina_counts = 2) 
-
-
-#...................................combine << #
-nano_illu_counts_ecoli <- full_gene_table %>%
-  left_join(illumina_rnaseq_counts_table, by = c("GeneID" = "gene")) %>%
-  dplyr::filter(!is.na(counts) == T & !is.na(illumina_counts) == T) %>%
-  dplyr::select(counts, illumina_counts,GeneID)
-
-#...................................Calculate transcript abundances
-colnames_data <- c("sequencing")
-colData <- matrix(ncol = 1, nrow = 2)
-colnames(colData) <- colnames_data 
-colData <- data.table(colData) %>%
-  mutate(sequencing = as.factor(c("nanopore", "illumina"))) %>%
-  as_tibble()
-
-
-dds_ecoli <- DESeq2::DESeqDataSetFromMatrix(countData = nano_illu_counts_ecoli[,1:2], 
-                                            colData = colData,
-                                            design = ~sequencing)
-
-rownames(dds_ecoli) <- nano_illu_counts_ecoli$GeneID
-
-# prefilter data set: remove rows (genes) with no counts
-dds_ecoli <- dds_ecoli[ rowSums(counts(dds_ecoli)) > 1, ]
-rld <- rlogTransformation( dds_ecoli ,blind = T)
-helper_ecoli <- as_tibble(assay(rld)[, 1:2]) 
-
-#...................................coloring
-heat_color_npg <- c(pal_npg()(10)[4],
-                    pal_npg()(10)[6],
-                    pal_npg()(10)[7],
-                    pal_npg()(10)[5],
-                    pal_npg()(10)[1],
-                    pal_npg()(10)[8])
-helper_ecoli$density <- get_density(helper_ecoli$counts, helper_ecoli$illumina_counts)
-
-#...................................plot
-correlation_expression_ecoli <- ggplot(data = helper_ecoli, aes(x = counts, y = illumina_counts, color = density)) +
-  geom_abline(alpha = 0.5, linetype = "dashed", color = "black", size = 1) +
-  scale_fill_gradientn(colours = heat_color_npg) +
-  scale_color_gradientn(colours = heat_color_npg) +
-  geom_point(alpha = 0.3, size = 2) +
-  #stat_density2d(aes(alpha=..level.., color = ..level..),geom = "polygon", fill = NA, size = 0.3) + 
-  theme_Publication_white() +
-  guides(alpha = F) +
-  guides(fill = guide_colorbar(barwidth = 5, barheight = 0.5, ticks = T, label = T),
-         color = guide_colorbar(barwidth = 5, barheight = 0.5, ticks = T, label = T)) +
-  xlab("MinION\n[rlog transformed expression]") +
-  ylab("Illumina\n[rlog transformed expression]") +
-  ggtitle("") +
-  scale_x_continuous(limits = c(0,17)) + 
-  scale_y_continuous(limits = c(0,17)) + 
-  coord_equal() +
-  stat_cor(method = "spearman", label.x = 0, label.y = 14,color = "black") 
-
-pdf("/Users/felix/Desktop/nanopore_native_rna/figures/raw_figures/190802_illumina_native_ecoli.pdf", 
-    width = 7, height = 7, paper = "special",onefile=FALSE)
-correlation_expression_ecoli
-dev.off()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-how_many <- 20
-helper$gene <- rownames(rld)
-
-# NEW HEATMAP PLOT
-table_expression_tex <- helper %>%
-  arrange(desc(counts)) %>%
-  head(n = how_many) %>%
-  dplyr::select(gene, counts) %>%
-  rename(counts = counts) %>%
-  mutate(set = "nanopore (TEX)", gene = as.factor(gene))
-
-table_expression_illumina <- helper %>%
-  arrange(desc(counts)) %>%
-  head(n = how_many) %>%
-  dplyr::select(gene, illumina_counts) %>%
-  rename(counts = illumina_counts) %>%
-  mutate(set = "illumina")
-
-table_expression_full <- rbind(table_expression_tex, table_expression_illumina) %>%
-  mutate(gene = substr(gene,1,15))
-
-
-gff_file <- "/Users/felixgrunberger/Documents/R/differential_0739/data/genome_data/CP023154.gff"
-gff <- readGFF(file = gff_file) %>%
-  as.tibble() %>%
-  dplyr::filter(type == "CDS") %>%
-  mutate(ID = substr(ID,1,15)) %>%
-  dplyr::select(ID, product)
-
-list_names <- list()
-for (i in 1:length(table_expression_full$counts)){
-  list_names <- c(list_names, gff$product[gff$ID == table_expression_full$gene[i]])
-}
-table_expression_full$gene <- paste(table_expression_full$gene, list_names, sep = ",")
-
-
-wanted_order <- table_expression_full %>%
-  dplyr::filter(set == "illumina") %>%
-  arrange(desc(counts)) %>%
-  dplyr::select(gene)
-
-table_expression_full_new <- table_expression_full
-table_expression_full_new$gene <-  factor(table_expression_full_new$gene, 
-                                          levels = rev(unlist(wanted_order)))
-
-
-
-heatmap_counts <- ggplot(table_expression_full_new, aes(x = set, y = gene)) + 
-  geom_tile(aes(fill = counts), colour = "white", size = 0.1) + 
-  scale_fill_gradientn(colours = heat_color_npg) +
-  theme_minimal() +
-  xlab("") +
-  ylab("") +
-  coord_equal() +
-  theme(axis.ticks = element_blank(), axis.text.x = element_text(angle = 330, hjust = 0, colour = "grey50"))
-
-heatmap_counts
-
-pdf(here("/figures/190529_heatmap_genes_pfu.pdf"), 
-    width = 14, height = 8, paper = "special",onefile=FALSE)
-heatmap_counts
-dev.off()
