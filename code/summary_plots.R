@@ -78,7 +78,7 @@ wrapper_summary_table <- function (input_summary_file, identifier, barcodes_used
 # LOAD & TIDY DATA
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-#...................................summary files were first compressed using gzip (-9 option for optimal compression) and are stored aunder summary data
+#...................................summary files were first compressed using gzip (-9 option for optimal compression) and are stored under summary data
 
 #...................................load summary data and modify them
 summary_files <- paste(here("data/summary_data/"), list.files(here("data/summary_data/")), sep = "")

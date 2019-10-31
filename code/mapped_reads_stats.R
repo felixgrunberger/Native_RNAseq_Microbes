@@ -108,7 +108,7 @@ for (i in seq_along(sample_names)){
 # LOAD & TIDY DATA GENOME
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-#...................................input: pre-calculated tidy files
+#...................................input: pre-calculated single-read tidy files
 id_files <- paste(here("data/tidy_data/"), list.files(here("data/tidy_data/"),pattern = "_id_table"), sep = "")
 
 #...................................calculate genome tables
