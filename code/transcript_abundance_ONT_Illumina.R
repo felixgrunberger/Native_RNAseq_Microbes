@@ -75,7 +75,7 @@ transcript_abundace_ggcorr <- function(input_count_table){
 
 
 #...................................publication_theme_white
-theme_Publication_white <- function(base_size=14) {
+theme_Publication_white <- function(base_size=10) {
   (theme_foundation(base_size=base_size, base_family="Helvetica")
    + theme(plot.title = element_text(face = "bold",
                                      size = rel(3), hjust = 0.5),
@@ -104,8 +104,6 @@ theme_Publication_white <- function(base_size=14) {
            strip.text = element_text(face="bold")
    ))
 }
-
-
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 # LOAD AND TIDY DATA
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
