@@ -6,19 +6,28 @@
 ###########################################################################
 ###########################################################################
 
-## @knitr read_identity
-
 # (identity = (1 - NM/aligned_reads)*100)
 
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 # LOAD LIBRARIES
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-packages <- c("tidyverse", "here", "ggthemes", "data.table", "ggExtra", "Rsamtools", "GenomicAlignments", "seqTools", "Rsubread", "ape", "DT", "ggpubr", "ggridges", "ggsci")
+packages <- c("tidyverse", "here", "ggthemes", "data.table", 
+              "ggExtra", "Rsamtools", "GenomicAlignments", 
+              "seqTools", "Rsubread", "ape", "DT", "ggpubr", 
+              "ggridges", "ggsci")
 invisible(lapply(packages, require, character.only = TRUE))
 
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 # LOAD FUNCTIONS
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+#...................................calculate bases on CDS
+cds_depth_calculator <- function(input_gff){
+  gff_length_table <- read.gff(input_gff) %>%
+    dplyr::filter(type == "CDS") %>%
+    mutate(length = abs(start - end))
+  return(sum(gff_length_table$length))
+}
 
 #...................................publication_theme_white
 theme_Publication_white <- function(base_size=10) {
@@ -121,7 +130,7 @@ for (i in seq_along(sample_names)){
 
 
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-# MERGE ALL DATA AND PLOT
+# MERGE ALL DATA 
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 #...................................combine enolase and genome tables
@@ -132,6 +141,54 @@ full_table$sequencing_set <-  factor(full_table$sequencing_set,
                                      levels = rev(c("ecoli_tex","ecoli_notex",
                                                     "pfu_tex", "pfu_notex",
                                                     "hvo_tex", "hvo_notex")))
+
+
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+# CALCULATE STATISTICS
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+#...................................calculate mapped read statistics
+#.................................number of mapped reads / median identity
+full_table %>%
+  dplyr::filter(mapped_to == "genome") %>%
+  group_by(sequencing_set) %>%
+  summarise(number_of_mapped_reads = n(),
+            median_identity = median(identity))
+
+#.................................CDS mapping features
+#...............................calculate bases on CDS
+cds_pfu   <- cds_depth_calculator(here("data/genome_data/pfu.gff"))
+cds_hvo   <- cds_depth_calculator(here("data/genome_data/hvo.gff"))
+cds_ecoli <- cds_depth_calculator(here("data/genome_data/ecoli.gff"))
+
+full_table %>%
+  mutate(cds_depth = ifelse(sequencing_set == "ecoli_notex" | sequencing_set == "ecoli_tex", cds_ecoli,
+                            ifelse(sequencing_set == "pfu_notex" | sequencing_set == "pfu_tex", cds_pfu, cds_hvo))) %>%
+  group_by(sequencing_set) %>%
+  dplyr::filter(mapped_type == "CDS", mapped_to == "genome") %>%
+  summarise(reads_mapped_to_CDS = n(),
+            bases_mapped_to_CDS = sum(aligned_reads),
+            sequencing_depth_CDS = sum(aligned_reads)/max(cds_depth))
+
+#.................................rRNA mapping features
+full_table %>%
+  group_by(sequencing_set) %>%
+  dplyr::filter(mapped_type == "rRNA", mapped_to == "genome") %>%
+  summarise(reads_mapped_to_rRNA = n())
+
+#.................................enolase mapping features
+full_table %>%
+  group_by(sequencing_set) %>%
+  dplyr::filter(mapped_type == "CDS", mapped_to == "control") %>%
+  summarise(reads_mapped_to_enolase = n(),
+            median_length_enolase = median(as.numeric(sequence_length_template)),
+            median_quality_enolase = median(as.numeric(mean_qscore_template)))
+
+
+
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+# PLOT
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 #...................................change colors
 heat_color_npg <- rev(c(pal_npg()(10)[4],

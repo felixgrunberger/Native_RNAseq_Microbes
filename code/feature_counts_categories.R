@@ -165,4 +165,3 @@ pdf(here("figures/mapping_to_features_total_counts.pdf"),
 gg_total_counts
 dev.off()
 
-

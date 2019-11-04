@@ -663,15 +663,15 @@ utr5_operon_hvo <-  fread(filtered_ids[3]) %>%
   ungroup() %>%
   rowwise() %>%
   mutate(promoter_sequence = ifelse(strand == "+" & seqid == "NC_013964.1", as.character(hvo_fasta$`NC_013964.1 Haloferax volcanii DS2 plasmid pHV3, complete sequence`[(median_utr5 - 46 - 12):(median_utr5 + 1 - 12)]),
-                                    #ifelse(strand == "+" & seqid == "NC_013965.1", as.character(hvo_fasta$`NC_013965.1 Haloferax volcanii DS2 plasmid pHV2, complete sequence`[(median_utr5 - 46 - 12):(median_utr5 + 1 - 12)]),
+                                     ifelse(strand == "+" & seqid == "NC_013965.1", as.character(hvo_fasta$`NC_013965.1 Haloferax volcanii DS2 plasmid pHV2, complete sequence`[(median_utr5 - 46 - 12):(median_utr5 + 1 - 12)]),
                                            ifelse(strand == "+" & seqid == "NC_013966.1", as.character(hvo_fasta$`NC_013966.1 Haloferax volcanii DS2 plasmid pHV4, complete sequence`[(median_utr5 - 46 - 12):(median_utr5 + 1 - 12)]),
                                                   ifelse(strand == "+" & seqid == "NC_013967.1", as.character(hvo_fasta$`NC_013967.1 Haloferax volcanii DS2, complete genome`[(median_utr5 - 46 - 12):(median_utr5 + 1 - 12)]),
                                                          ifelse(strand == "+" & seqid == "NC_013968.1", as.character(hvo_fasta$`NC_013968.1 Haloferax volcanii DS2 plasmid pHV1, complete sequence`[(median_utr5 - 46 - 12):(median_utr5 + 1 - 12)]),
                                                                 ifelse(strand == "-" & seqid == "NC_013968.1", as.character(reverseComplement(hvo_fasta$`NC_013968.1 Haloferax volcanii DS2 plasmid pHV1, complete sequence`[(median_utr5 - 1 + 12):(median_utr5 + 46 + 12)])),
                                                                        ifelse(strand == "-" & seqid == "NC_013967.1", as.character(reverseComplement(hvo_fasta$`NC_013967.1 Haloferax volcanii DS2, complete genome`[(median_utr5 - 1 + 12):(median_utr5 + 46 + 12)])),
                                                                               ifelse(strand == "-" & seqid == "NC_013966.1", as.character(reverseComplement(hvo_fasta$`NC_013966.1 Haloferax volcanii DS2 plasmid pHV4, complete sequence`[(median_utr5 - 1 + 12):(median_utr5 + 46 + 12)])),
-                                                                                     #ifelse(strand == "-" & seqid == "NC_013965.1", as.character(reverseComplement(hvo_fasta$`NC_013965.1 Haloferax volcanii DS2 plasmid pHV2, complete sequence`[(median_utr5 - 1 + 12):(median_utr5 + 46 + 12)])),
-                                                                                            ifelse(strand == "-" & seqid == "NC_013964.1", as.character(reverseComplement(hvo_fasta$`NC_013964.1 Haloferax volcanii DS2 plasmid pHV3, complete sequence`[(median_utr5 - 1 + 12):(median_utr5 + 46 + 12)]))))))))))) %>%
+                                                                                      ifelse(strand == "-" & seqid == "NC_013965.1", as.character(reverseComplement(hvo_fasta$`NC_013965.1 Haloferax volcanii DS2 plasmid pHV2, complete sequence`[(median_utr5 - 1 + 12):(median_utr5 + 46 + 12)])),
+                                                                                            ifelse(strand == "-" & seqid == "NC_013964.1", as.character(reverseComplement(hvo_fasta$`NC_013964.1 Haloferax volcanii DS2 plasmid pHV3, complete sequence`[(median_utr5 - 1 + 12):(median_utr5 + 46 + 12)]))))))))))))) %>%
                                     
   mutate(new_gene = substr(gene, 1,15)) %>%
   dplyr::filter(group == "start") 
