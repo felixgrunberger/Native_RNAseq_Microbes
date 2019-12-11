@@ -18,12 +18,16 @@
 
 This is the repository for the manuscript "Nanopore-based native RNA sequencing provides insights into prokaryotic transcription, operon structures, rRNA maturation and modifications"
 
-### **Original fastq files:**
+### **Original fast5 files:**
 The raw data will be submitted to the NCBI sequence read archive (<a href="https://www.ncbi.nlm.nih.gov/sra">SRA</a>) under BioProject accession number XXX.
 
 
 ### **File Description:**
 
+### **Read generation:**  
+
+### **Data analysis**
+A commented version of the data analysis process can be found here: <a href="https://github.com/felixgrunberger/Native_RNAseq_Microbes/tree/master/data_analysis">data_analysis</a>
 
 **********
 
