@@ -32,7 +32,8 @@ Libraries for Nanopore sequencing were prepared from poly(A)-tailed RNAs accordi
 A commented version of the data analysis process can be found here: <a href="https://github.com/felixgrunberger/Native_RNAseq_Microbes/tree/master/data_analysis">data_analysis</a>
 
 **********
+## License
 
-This project is under the general MIT License.
+This project is under the general MIT License - see the [LICENSE](LICENSE) file for details
 
 **********
