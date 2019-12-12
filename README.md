@@ -69,14 +69,18 @@ online for details of the implementation (that is, the R package’s
 source code). The exampleRPackage can also be installed from github
 (although as an example package it does not contain anything useful):
 
-    # install.packages("devtools")
-    #devtools::install_github("mvuorre/exampleRPackage")
+``` r
+# install.packages("devtools")
+#devtools::install_github("mvuorre/exampleRPackage")
+```
 
 It is also permanently stored on OSF. To install from OSF:
 
-    #temporary_file <- tempfile(fileext = ".tar.gz")
-    #download.file("https://osf.io/mqd6f/download", destfile = temporary_file)
-    #install.packages(temporary_file, repos = NULL)
+``` r
+#temporary_file <- tempfile(fileext = ".tar.gz")
+#download.file("https://osf.io/mqd6f/download", destfile = temporary_file)
+#install.packages(temporary_file, repos = NULL)
+```
 
 The file you are reading now is the package’s README, which describes
 how to create R packages with functions, data, and appropriate
@@ -200,7 +204,9 @@ computer. We will also go through advanced (optional) steps.
 You will need one R package (R developer tools) to follow these
 instructions:
 
-    #install.packages("devtools")
+``` r
+#install.packages("devtools")
+```
 
 The **devtools** package \[@wickham\_devtools:\_2017\] contains helpful
 functions for creating R packages.
@@ -216,16 +222,18 @@ infrastructure leaving little work for the user. After creating the
 package, the project’s files and folders look like this
 (`exampleRPackage` is the project’s root folder):
 
-    exampleRPackage/
-    ├── man/
-    |   └── hello.Rd
-    ├── R/
-    |   └── hello.R
-    ├── DESCRIPTION
-    ├── NAMESPACE
-    ├── exampleRPackage.Rproj
-    ├── .gitignore
-    └── .Rbuildignore
+``` bash
+exampleRPackage/
+├── man/
+|   └── hello.Rd
+├── R/
+|   └── hello.R
+├── DESCRIPTION
+├── NAMESPACE
+├── exampleRPackage.Rproj
+├── .gitignore
+└── .Rbuildignore
+```
 
 `man/` is the “manuals” folder which will have files documenting the
 package. `R/` is a folder for R functions. `DESCRIPTION` is a file
