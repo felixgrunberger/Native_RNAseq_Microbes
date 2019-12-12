@@ -24,7 +24,9 @@ The raw data will be submitted to the NCBI sequence read archive (<a href="https
 
 ### **File Description:**
 
-### **Read generation:**  
+### **Library preparation and sequencing:**  
+Libraries for Nanopore sequencing were prepared from poly(A)-tailed RNAs according to the SQK-RNA001 Kit protocol (Oxford Nanopore, Version: DRS_9026_v1_revP_15Dec2016) with minor modifications for barcoded libraries. In this case, Agencourt AMPure XP magnetic beads (Beckman Coulter) in combination with 1 µl of RiboGuard RNase Inhibitor (Lucigen) were used instead of the recommended Agencourt RNAclean XP beads to purify samples after enzymatic reactions. For the barcoded libraries, the RTA adapter was replaced by custom adapters described in https://github.com/hyeshik/poreplex and reverse transcription (RT) was performed in individual tubes for each library. After RT reactions, cDNA was quantified using the Qubit DNA HS assay kit (Thermo Fisher Scientific) and equimolar amounts of DNA for the multiplexed samples were used in the next step for ligation of the RNA Adapter (RMX) in a single tube. Subsequent reactions were performed according to the protocols recommended by ONT. The libraries were sequenced on a MinION using R9.4 flow cells and subsequently, FAST5 files were generated using the recommended script in MinKNOW. 
+
 
 ### **Data analysis**
 A commented version of the data analysis process can be found here: <a href="https://github.com/felixgrunberger/Native_RNAseq_Microbes/tree/master/data_analysis">data_analysis</a>
