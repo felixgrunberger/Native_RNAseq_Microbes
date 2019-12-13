@@ -32,8 +32,24 @@ Max-von-Laue-Str. 9, D-60438, Frankfurt, Germany
         <span>`poreplex`</span>](#demultiplexing-using-poreplex)
       - [Basecalling using `guppy`](#basecalling-using-guppy)
       - [Mapping using <span>`minimap2`</span>](#mapping-using-minimap2)
+          - [To reference genomes](#to-reference-genomes)
+          - [To spike-in control](#to-spike-in-control)
       - [Poly(A)-tail analysis using
         <span>`nanopolish`</span>](#polya-tail-analysis-using-nanopolish)
+      - [Gene expression analysis using
+        `featurecounts`](#gene-expression-analysis-using-featurecounts)
+      - [Summarise metadata information on single-read level in
+        matrix](#summarise-metadata-information-on-single-read-level-in-matrix)
+      - [Quality control](#quality-control)
+          - [Analysis of raw reads](#analysis-of-raw-reads)
+          - [Analysis of mapped reads](#analysis-of-mapped-reads)
+      - [Detection of transcriptional units
+        (TU)](#detection-of-transcriptional-units-tu)
+      - [Annotation of transcription start sites
+        (TSS)](#annotation-of-transcription-start-sites-tss)
+      - [Annotation of transcription termination sites
+        (TTS)](#annotation-of-transcription-termination-sites-tts)
+      - [Modified base detection](#modified-base-detection)
   - [Data availability](#data-availability)
       - [Raw sequencing files](#raw-sequencing-files)
       - [Additional data](#additional-data)
@@ -273,6 +289,24 @@ length estimator can then be run on mapped files with `nanopolish
 polya`, with genome fasta, fastq read file and mapped bam file as input.
 The output is stored in a .tsv file that was analyzed using a [custom R
 script](Rscripts/poly_a_tail_analysis.R).
+
+### Gene expression analysis using `featurecounts`
+
+### Summarise metadata information on single-read level in matrix
+
+### Quality control
+
+#### Analysis of raw reads
+
+#### Analysis of mapped reads
+
+### Detection of transcriptional units (TU)
+
+### Annotation of transcription start sites (TSS)
+
+### Annotation of transcription termination sites (TTS)
+
+### Modified base detection
 
 ## Data availability
 
