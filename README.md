@@ -32,6 +32,8 @@ Max-von-Laue-Str. 9, D-60438, Frankfurt, Germany
         <span>`poreplex`</span>](#demultiplexing-using-poreplex)
       - [Basecalling using `guppy`](#basecalling-using-guppy)
       - [Mapping using <span>`minimap2`</span>](#mapping-using-minimap2)
+      - [Poly(A)-tail analysis using
+        <span>`nanopolish`</span>](#polya-tail-analysis-using-nanopolish)
   - [Data availability](#data-availability)
       - [Raw sequencing files](#raw-sequencing-files)
       - [Additional data](#additional-data)
@@ -96,10 +98,12 @@ command from the
 [ont\_fast5\_api](https://github.com/nanoporetech/ont_fast5_api):
 
 ``` bash
+#!/bin/bash
+
 # set input_path, save_path, search in all folders for fast5 files, set number of threads
 multi_to_single_fast5 \
-    --input_path <(path) folder containing multi_read_fast5 files> \
-    --save_path <(path) to folder where single_read fast5 files will be output> \
+    --input_path <path folder containing multi_read_fast5 files> \
+    --save_path <path to folder where single_read fast5 files will be output> \
     --recursive <recursively search sub-directories> \
     --threads <number of CPU threads to use>
 ```
@@ -109,14 +113,16 @@ with one subfolder per multi-read input file.
 
 ### Demultiplexing using [`poreplex`](https://github.com/hyeshik/poreplex)
 
-Multiplexed libraries (how to is described here:
+Multiplexed libraries (*how to* is described here:
 <https://github.com/hyeshik/poreplex>) can be demultiplexed using
 [`poreplex`](https://github.com/hyeshik/poreplex). Following this
 approach four direct RNA sequencing libraries can be barcoded, pooled
-and sequenced together.  
-`Poreplex` can demultiplex the libraries into separate folders with:
+and sequenced together. `Poreplex` can demultiplex the libraries into
+separate folders with:
 
 ``` bash
+#!/bin/bash
+
 # trim adapters, basecall using albacore, de-multiplex, create symbolic fast5 link, increase number of working processes, sort reads to folders according to barcodes
 poreplex \
     -i <path/to/fast5> \
@@ -145,23 +151,128 @@ the ONT Community). We used version 3.0.3 for basecalling of all of our
 reads:
 
 ``` bash
-ont-guppy-cpu/bin/guppy_basecaller \
-    --flowcell FLO-MIN106 \
-    --kit SQK-RNA001 \
-    --input $input \
-    --save_path $output \
-    --recursive \
-    --reverse_sequence yes \
-    --hp_correct 1 \
-    --disable_pings 1 \
-    --enable_trimming 0 \
-    --cpu_threads_per_caller 4 \
-    --calib_detect
+#!/bin/bash
+
+guppy_basecaller \
+    --flowcell FLO-MIN106 <flowcell-version> \
+    --kit SQK-RNA001 <sequencing-kit> \
+    --input $input <path to input FAST5 files> \
+    --save_path $output <path to output> \
+    --recursive <search input folders recursively> \
+    --reverse_sequence yes <as RNA is sequenced from 3´to 5´> \
+    --hp_correct 1 <enable homopolymer correction> \
+    --enable_trimming <trim RNA reads> \
+    --cpu_threads_per_caller <set number of threads> \
+    --calib_detect <detect RCS spike in>
+```
+
+Demultiplexed files from *fast5\_failed* and *fast5\_passed* folders can
+be basecalled seperately. Final output files from `guppy` are merged
+with:
+
+``` bash
+#!/bin/bash
+
+# FASTQ
+### e.g. for BC1 failed and passed folders
+cat $dir/guppy_data/BC1_fail/*.fastq $dir/guppy_data/BC1_pass/*.fastq > $dir/fastq_data/BC1_combined.fastq
+
+# Sequencing summary
+### e.g. for BC1 failed and passed folders
+cat $dir/guppy_data/BC1_fail/sequencing_summary.txt $dir/guppy_data/BC1_pass/sequencing_summary.txt > $dir/summary_data/BC1_sequencing_summary.txt
 ```
 
 ### Mapping using [`minimap2`](https://github.com/lh3/minimap2)
 
-(Li [2018](#ref-Li2018))
+#### To reference genomes
+
+FAST5 passed and FAST5 failed reads that have been demultiplexed using
+`poreplex` and basecalled using `guppy` can now be mapped to the
+reference genomes using [`minimap2`](https://github.com/lh3/minimap2)(Li
+[2018](#ref-Li2018)). Release 2.17-r941 was used for our analysis.
+Output alignments in the SAM format were generated with the recommended
+options for noisy Nanopore Direct RNA-seq (-ax splice, -uf, -k14) and
+also with (1) -p set to 0.99, to return primary and secondary mappings
+and (2) with –MD turned on, to include the MD tag for calculating
+mapping identities. Alignment files were further converted to bam files,
+sorted and indexed using `SAMtools` (Li et al. [2009](#ref-Li2009)).
+Strand-specific wig and bigwig files were finally created using
+`bam2wig` (Version 1.5, <https://github.com/MikeAxtell/bam2wig>).
+
+``` bash
+#!/bin/bash
+
+# set file paths
+dir=<path_to_basedir>
+genome_fasta=<path_to_fasta_file>(downloaded from NCBI)
+out_dir=$dir/mapped_data
+
+# map using minimap2 | convert using samtools and bam2wig
+for file in $dir/fastq_data/*_combined.fastq # path to all of the merged .fastq files
+do 
+  filename_extended=$file##*/
+  filename=$filename_extended%%.*
+  minimap2 -p 0.99 -ax splice -k14 --MD -uf $genome_fasta $file > $out_dir/$filename".sam" # map using minimaps2
+  samtools flagstat $out_dir/$filename".sam" > $out_dir/$filename"_stats.txt" # calculate mapping statistics
+  samtools view -bS $out_dir/$filename".sam" -o $out_dir/$filename".bam" # sam to bam
+  samtools sort $out_dir/$filename".bam" -o $out_dir/$filename"_sorted.bam" # bam to sorted bam 
+  samtools index $out_dir/$filename"_sorted.bam" # index sorted bam file 
+  samtools view -h -F 16 $out_dir/$filename".bam" > $out_dir/$filename"_forward.bam" # create strand specific bam files
+  samtools view -h -f 16 $out_dir/$filename".bam" > $out_dir/$filename"_reverse.bam" # strand specific bam files
+  samtools sort $out_dir/$filename"_forward.bam" -o $out_dir/$filename"_forward_sorted.bam" # sort 
+  samtools sort $out_dir/$filename"_reverse.bam" -o $out_dir/$filename"_reverse_sorted.bam" # sort
+  samtools depth -a -d 0 $out_dir/$filename"_forward_sorted.bam" >  $out_dir/$filename"_forward_sorted_depth.txt" # calculate number of reads for each position in a strand specific way (no threshold set) and write to bed-like txt file
+  samtools depth -a -d 0 $out_dir/$filename"_reverse_sorted.bam" > $out_dir/$filename"_reverse_sorted_depth.txt" # calculate number of reads for each position in a strand specific way (no threshold set) and write to bed-like txt file
+  /Users/felixgrunberger/Documents/scripts/bam2wig $out_dir/$filename"_sorted.bam" # create wig files from bam files, all reads
+  /Users/felixgrunberger/Documents/scripts/bam2wig -s top $out_dir/$filename"_sorted.bam" # create wig files from bam files, top strand
+  /Users/felixgrunberger/Documents/scripts/bam2wig -s bottom $out_dir/$filename"_sorted.bam" # create wig files from bam files, bottom strand
+  echo $filename "mapping finished" 
+done
+```
+
+#### To spike-in control
+
+`Guppy` filters out the calibration reads (make sure to enable
+`--calib_detect`) that can be mapped to the enolase gene to perform
+quality control analysis.
+
+``` bash
+#!/bin/bash
+
+# set file paths
+dir=<path_to_basedir>
+genome_fasta=<path_to_enolase_file>
+out_dir=$dir/mapped_data
+
+# before mapping merge failed and passed files
+cat $dir/guppy_data/BC1_fail/calibration_strands/*.fastq $dir/guppy_data/BC1_pass/calibration_strands/*.fastq > $dir/enolase_data/BC1_calibration.fastq
+
+# map using minimap2
+for file in $dir/enolase_data/*calibration.fastq
+do 
+  filename_extended=$file##*/
+  filename=$filename_extended%%.*
+  minimap2 -ax splice -k14  --MD -uf $genome_fasta $file > $out_dir/$filename".sam"
+  samtools flagstat $out_dir/$filename".sam" > $out_dir/$filename"_stats.txt"
+  samtools view -bS $out_dir/$filename".sam" | samtools sort -o $out_dir/$filename"_sorted.bam"
+  samtools index $out_dir/$filename"_sorted.bam"
+  samtools depth -a -d 0 $out_dir/$filename"_sorted.bam" > $out_dir/$filename"_depth.txt"
+  echo $filename "mapping finished"!  
+done
+```
+
+### Poly(A)-tail analysis using [`nanopolish`](https://nanopolish.readthedocs.io/en/latest/quickstart_polya.html)
+
+Poly(A) tail length was estimated by nanopolish following the
+recommended workflow (Version 0.10.2,
+<https://nanopolish.readthedocs.io/en/latest/quickstart_polya.html>)
+(Loman, Quick, and Simpson [2015](#ref-Loman2015)).  
+The workflow includes indexing of the reads using the `nanopolish index`
+module and mapping of the reads using `minimap2`. The poly(A)-tail
+length estimator can then be run on mapped files with `nanopolish
+polya`, with genome fasta, fastq read file and mapped bam file as input.
+The output is stored in a .tsv file that was analyzed using a [custom R
+script](Rscripts/poly_a_tail_analysis.R).
 
 ## Data availability
 
@@ -189,6 +300,24 @@ This project is under the general MIT License - see the
 
 Li, Heng. 2018. “Minimap2: Pairwise alignment for nucleotide sequences.”
 *Bioinformatics*. <https://doi.org/10.1093/bioinformatics/bty191>.
+
+</div>
+
+<div id="ref-Li2009">
+
+Li, Heng, Bob Handsaker, Alec Wysoker, Tim Fennell, Jue Ruan, Nils
+Homer, Gabor Marth, Goncalo Abecasis, and Richard Durbin. 2009. “The
+Sequence Alignment/Map format and SAMtools.” *Bioinformatics* 25 (16):
+2078–9. <https://doi.org/10.1093/bioinformatics/btp352>.
+
+</div>
+
+<div id="ref-Loman2015">
+
+Loman, Nicholas J., Joshua Quick, and Jared T. Simpson. 2015. “A
+complete bacterial genome assembled de novo using only nanopore
+sequencing data.” *Nature Methods* 12 (8): 733–35.
+<https://doi.org/10.1038/nmeth.3444>.
 
 </div>
 
