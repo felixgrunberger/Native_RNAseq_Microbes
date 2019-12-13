@@ -6,49 +6,15 @@
 ###########################################################################
 ###########################################################################
 
-
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-# LOAD LIBRARIES
+# LOAD LIBRARIES AND PLOTTING FUNCTION
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-packages <- c("ggeconodist", "tidyverse", "here", "ggthemes", 
-              "data.table", "ggExtra", "Rsamtools", "GenomicAlignments",
-              "seqTools", "Rsubread", "ape", "DT", "ggpubr", "ggridges", "ggsci")
-invisible(lapply(packages, require, character.only = TRUE))
+library(here)
+source(here("Rscripts/load_libraries.R"))
 
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 # LOAD FUNCTIONS
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-
-#...................................publication_theme_white
-theme_Publication_white <- function(base_size=10) {
-  (theme_foundation(base_size=base_size, base_family="Helvetica")
-   + theme(plot.title = element_text(face = "bold",
-                                     size = rel(3), hjust = 0.5),
-           text = element_text(color = "black"),
-           panel.background = element_rect(colour = NA, fill = "white"),
-           plot.background = element_rect(colour = NA, fill = "white"),
-           panel.border = element_rect(colour = "black"),
-           axis.title = element_text(face = "bold",size = rel(1.5)),
-           axis.title.y = element_text(angle=90,vjust =2, size = rel(1.2)),
-           axis.title.x = element_text(vjust = -0.2, size = rel(1.2)),
-           axis.text = element_text(size = rel(1.2)), 
-           axis.line = element_line(colour="black"),
-           axis.ticks = element_line(),
-           panel.grid.major = element_line(colour="grey80"),
-           panel.grid.minor = element_blank(),
-           legend.key = element_rect(color = NA, fill = "white"),
-           legend.position = "bottom",
-           legend.background= element_rect(color = NA, fill = "white"),
-           legend.direction = "horizontal",
-           legend.key.size= unit(0.2, "cm"),
-           legend.spacing = unit(0, "cm"),
-           legend.text = element_text(color = "black", size = rel(1.2)),
-           legend.title = element_text(face="italic", color = "black"),
-           plot.margin=unit(c(10,5,5,5),"mm"),
-           strip.background=element_rect(colour="grey90",fill="grey70"),
-           strip.text = element_text(face="bold")
-   ))
-}
 
 #...................................load data and combine with tidy data single read information
 load_polya_and_combine <- function(input_polya, input_id_file, sequencing_set){
@@ -85,11 +51,13 @@ load_polya_and_combine <- function(input_polya, input_id_file, sequencing_set){
 # LOAD & TIDY DATA
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-#...................................paths to poly(A).tsv files from nanopolish output
+#...................................paths to poly(A).tsv files from nanopolish output (gzipped)
 polya_files <- paste(here("data/polya_data/"), list.files(here("data/polya_data/"),pattern = ".tsv.gz"), sep = "")
 
 #...................................input: pre-calculated single-read tidy files
 id_files <- paste(here("data/tidy_data/"), list.files(here("data/tidy_data/"),pattern = "_id_table"), sep = "")
+# filter out lowsalt and ksga sample
+id_files <- id_files[c(1,2,4,6,7,8)]
 
 #...................................get sample names
 sample_names <- unlist(lapply(polya_files, FUN=function(x){str_split_fixed(str_split_fixed(x, "_polya", 2)[1],"polya_data/",2)[2]}))
@@ -99,7 +67,8 @@ polya_table <- data.frame()
 
 for (i in seq_along(sample_names)){
   load(id_files[i])
-  polya_table <- rbindlist(list(polya_table, load_polya_and_combine(polya_files[i], full_id_table, sample_names[i])))
+  polya_table <- rbindlist(list(polya_table, 
+                                load_polya_and_combine(polya_files[i], full_id_table, sample_names[i])))
 }
 
 #...................................reorder levels
@@ -108,7 +77,7 @@ polya_table$sequencing_set <-  factor(polya_table$sequencing_set,
                                                      "pfu_tex", "pfu_notex",
                                                      "hvo_tex", "hvo_notex")))
 
-#...................................reorder groups
+#...................................reorder groups (length of groups)
 polya_table$group <- factor(polya_table$group, levels(as.factor(polya_table$group))[c(2,5,3,4,1)])
 
 #...................................filter out tRNAs
