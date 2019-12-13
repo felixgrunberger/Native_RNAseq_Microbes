@@ -28,12 +28,15 @@ Regensburg, Germany.
   - [Data generation](#data-generation)
   - [Data analysis](#data-analysis)
       - [Demultiplexing using
-        `poreplex`](#demultiplexing-using-poreplex)
+        <a href="https://github.com/hyeshik/poreplex">`poreplex`</a>](#demultiplexing-using-poreplex)
       - [Basecalling using `guppy`](#basecalling-using-guppy)
+      - [Mapping using
+        <a href="https://github.com/lh3/minimap2)">`minimap2`</a>](#mapping-using-minimap2)
   - [Data availability](#data-availability)
       - [Raw sequencing files](#raw-sequencing-files)
       - [Additional data](#additional-data)
   - [License](#license)
+  - [References](#references)
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
@@ -67,9 +70,13 @@ the recommended script in MinKNOW.
 
 ## Data analysis
 
-### Demultiplexing using `poreplex`
+### Demultiplexing using <a href="https://github.com/hyeshik/poreplex">`poreplex`</a>
 
 ### Basecalling using `guppy`
+
+### Mapping using <a href="https://github.com/lh3/minimap2)">`minimap2`</a>
+
+(Li [2018](#ref-Li2018))
 
 ## Data availability
 
@@ -88,3 +95,16 @@ accession number XXX.
 
 This project is under the general MIT License - see the
 [LICENSE](LICENSE) file for details
+
+## References
+
+<div id="refs" class="references hanging-indent">
+
+<div id="ref-Li2018">
+
+Li, Heng. 2018. “Minimap2: Pairwise alignment for nucleotide sequences.”
+*Bioinformatics*. <https://doi.org/10.1093/bioinformatics/bty191>.
+
+</div>
+
+</div>
