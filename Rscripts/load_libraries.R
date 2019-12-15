@@ -1,9 +1,10 @@
 # set libraries and standard plotting functions that are used during the analysis
 
 #...................................libraries
-packages <- c("ggeconodist", "tidyverse", "here", "ggthemes", 
-              "data.table", "ggExtra", "Rsamtools", "GenomicAlignments",
-              "seqTools", "Rsubread", "ape", "DT", "ggpubr", "ggridges", "ggsci")
+packages <- c("ggeconodist", "tidyverse", "here", "ggthemes", "gganimate","writexl",
+              "data.table", "ggExtra", "Rsamtools", "GenomicAlignments", "UpSetR",
+              "seqTools", "Rsubread", "ape", "DT", "ggpubr", "ggridges", "ggsci",
+              "CoverageView")
 invisible(lapply(packages, require, character.only = TRUE))
 
 #...................................plotting theme
