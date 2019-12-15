@@ -395,7 +395,8 @@ The detection of transcriptional units is a two-step process:
     described in
     [`tu_subcluster_annotation`](Rscripts/tu_subcluster_annotation.R)
 
-The clusters for each genome were saved as Supplementary Table XX in ..
+The clusters for each genome are saved in the
+[*tu\_tables*](tables/tu_tables/) section.
 
 ### Annotation of transcription start sites (TSS)
 
