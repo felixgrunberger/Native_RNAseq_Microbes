@@ -47,8 +47,6 @@ Max-von-Laue-Str. 9, D-60438, Frankfurt, Germany
           - [Analysis of raw reads](#analysis-of-raw-reads)
           - [Analysis of mapped reads](#analysis-of-mapped-reads)
           - [Run statistics](#run-statistics)
-      - [Detection of transcriptional units
-        (TU)](#detection-of-transcriptional-units-tu)
       - [Annotation of transcription start sites
         (TSS)](#annotation-of-transcription-start-sites-tss)
       - [Annotation of transcription termination sites
@@ -144,6 +142,7 @@ Native_RNAseq_Microbes/
 |   ├── guppy_data
 |   ├── fastq_data
 |   ├── coverage_data
+|   ├── meme_data
 |   ├── enolase_data
 |   ├── poly_data
 |   └── operon_data
@@ -366,7 +365,15 @@ Quality control of sequencing runs was performed at the raw-read level
 
 Raw read plots and statistics were generated from `guppy`s
 *sequencing\_summary.txt* files and are shown in the
-[`raw_read_plots`](Rscripts/raw_read_plots.R) script.
+[`raw_read_plots`](Rscripts/raw_read_plots.R) script.  
+To control for problems during loading (air bubbles, …) an interactive
+heatmap output of MinKNOW can be rebuild using following script:
+[`animated_qc`](Rscripts/animated_qc.R).  
+![](figures/animated_throughput.gif)
+
+In a similar way the total cumulative throughput over time can be
+animated using the [’animted\_qc\`](Rscripts/animated_qc.R) script:  
+![](figures/animated_hours_yield.gif)
 
 #### Analysis of mapped reads
 
@@ -379,24 +386,33 @@ Supplementary Table 1 in the manuscript based on raw and mapped features
 was calculated using the following script:
 [`calculate_run_statistics`](Rscripts/calculate_run_statistics.R).
 
-### Detection of transcriptional units (TU)
+s \#\#\# Detection of transcriptional units (TU)  
+The detection of transcriptional units is a two-step process:
 
-The detection of transcriptional units is a two-step process:  
-\- Collapsing of overlapping reads to TU-clusters is described in
-[`tu_cluster_generation.R`](Rscripts/tu_cluster_generation.R)  
-\- Splitting of of clusters based on sequencing depth on the 3´end is
-described in
-[`tu_subcluster_annotation`](Rscripts/tu_subcluster_annotation.R)
+  - Collapsing of overlapping reads to TU-clusters is described in
+    [`tu_cluster_generation.R`](Rscripts/tu_cluster_generation.R)  
+  - Splitting of of clusters based on sequencing depth on the 3´end is
+    described in
+    [`tu_subcluster_annotation`](Rscripts/tu_subcluster_annotation.R)
+
+The clusters for each genome were saved as Supplementary Table XX in ..
 
 ### Annotation of transcription start sites (TSS)
 
 The detection of transcription start sites (TSS) was based on the
 detection of transcriptional units and is described in
 [`transcription_start_sites`](Rscripts/transcription_start_sites.R).  
-A transcriptional start site table for each organsims can be found here:
-[*tss\_tables*](tables)
+A transcriptional start site table for each organism can be found here:
+[*tss\_tables*](tables/tss_tables/)
 
 ### Annotation of transcription termination sites (TTS)
+
+Transcription termination sites were estimated in a similar way as start
+sites and is described in the
+[`transcription_termination_sites`](Rscripts/transcription_termination_sites.R)
+script.  
+A transcriptional termination site table for each organism can be found
+here: [*tts\_tables*](tables/tts_tables/)
 
 ### Modified base detection
 
