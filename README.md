@@ -28,21 +28,25 @@ Max-von-Laue-Str. 9, D-60438, Frankfurt, Germany
     repository](#information-about-this-repository)
   - [Data generation](#data-generation)
   - [Data analysis](#data-analysis)
+      - [Navigation](#navigation)
       - [Demultiplexing using
         <span>`poreplex`</span>](#demultiplexing-using-poreplex)
       - [Basecalling using `guppy`](#basecalling-using-guppy)
       - [Mapping using <span>`minimap2`</span>](#mapping-using-minimap2)
-          - [To reference genomes](#to-reference-genomes)
-          - [To spike-in control](#to-spike-in-control)
+          - [Mapping of reads to reference
+            genomes](#mapping-of-reads-to-reference-genomes)
+          - [Mapping of reads to spike-in
+            control](#mapping-of-reads-to-spike-in-control)
       - [Poly(A)-tail analysis using
         <span>`nanopolish`</span>](#polya-tail-analysis-using-nanopolish)
       - [Gene expression analysis using
         `featurecounts`](#gene-expression-analysis-using-featurecounts)
-      - [Summarise metadata information on single-read level in
-        matrix](#summarise-metadata-information-on-single-read-level-in-matrix)
+      - [Summarise metadata information on single-read
+        level](#summarise-metadata-information-on-single-read-level)
       - [Quality control](#quality-control)
           - [Analysis of raw reads](#analysis-of-raw-reads)
           - [Analysis of mapped reads](#analysis-of-mapped-reads)
+          - [Run statistics](#run-statistics)
       - [Detection of transcriptional units
         (TU)](#detection-of-transcriptional-units-tu)
       - [Annotation of transcription start sites
@@ -71,8 +75,7 @@ sequencing data and the downstream analysis mostly based on custom
 
 The repository is currently actively developed.
 
-[![Active
-Development](https://img.shields.io/badge/Maintenance%20Level-Actively%20Developed-brightgreen.svg)](https://gist.github.com/cheerfulstoic/d107229326a01ff0f333a1d3476e068d)
+<!--[![Active Development](https://img.shields.io/badge/Maintenance%20Level-Actively%20Developed-brightgreen.svg)](https://gist.github.com/cheerfulstoic/d107229326a01ff0f333a1d3476e068d)-->
 
 ## Data generation
 
@@ -126,6 +129,33 @@ multi_to_single_fast5 \
 
 The output will be single-read FAST5 files in the *save\_path* folder
 with one subfolder per multi-read input file.
+
+### Navigation
+
+We managed our folders in the follwoing way:
+
+``` bash
+Native_RNAseq_Microbes/
+├── data/
+|   ├── genome_data
+|   ├── tidy_data
+|   ├── summary_data
+|   ├── mapped_data
+|   ├── guppy_data
+|   ├── fastq_data
+|   ├── coverage_data
+|   ├── enolase_data
+|   ├── poly_data
+|   └── operon_data
+├── Rscrips
+├── figures
+├── tables
+├── LICENSE
+└── README
+```
+
+Relative paths in the custom `R` and `bash` scripts are included for the
+complete analysis.
 
 ### Demultiplexing using [`poreplex`](https://github.com/hyeshik/poreplex)
 
@@ -200,7 +230,7 @@ cat $dir/guppy_data/BC1_fail/sequencing_summary.txt $dir/guppy_data/BC1_pass/seq
 
 ### Mapping using [`minimap2`](https://github.com/lh3/minimap2)
 
-#### To reference genomes
+#### Mapping of reads to reference genomes
 
 FAST5 passed and FAST5 failed reads that have been demultiplexed using
 `poreplex` and basecalled using `guppy` can now be mapped to the
@@ -246,7 +276,7 @@ do
 done
 ```
 
-#### To spike-in control
+#### Mapping of reads to spike-in control
 
 `Guppy` filters out the calibration reads (make sure to enable
 `--calib_detect`) that can be mapped to the enolase gene to perform
@@ -292,17 +322,79 @@ script](Rscripts/poly_a_tail_analysis.R).
 
 ### Gene expression analysis using `featurecounts`
 
-### Summarise metadata information on single-read level in matrix
+We calculated transcript abundances for long-read Nanopore native RNA
+reads using `featurecounts`(Liao, Smyth, and Shi [2019](#ref-Liao2019a))
+with the following command in `R`:
+
+``` r
+featureCounts(allowMultiOverlap = T, 
+              files = input_bam_file, 
+              annot.ext = input_gff_file, 
+              isGTFAnnotationFile = T, 
+              GTF.featureType = name, <name argument was used multiple times for CDS, rRNA and tRNAs>
+              GTF.attrType = "ID", 
+              isLongRead = T)
+```
+
+Number of counts for each gene were added to the metadata information,
+the `Rscript` for the complete analysis can be found in the next
+section.
+
+### Summarise metadata information on single-read level
+
+For each data set one matrix including raw-read, mapped-read and count
+information was prepared using the [`tidy_data`](Rscripts/tidy_data.R)
+script. Following files are needed as input:
+
+  - sequencing\_summary.txt from `guppy`  
+  - genome fasta file
+  - genome gff file  
+  - Sorted .bam file from `minimap2` output
+
+Files are stored as `R` files, but can also be exported as tables
+(commented in the code). As each line represents one single read or
+sometimes one read refers to multiple lines (multimapping of rRNA reads
+to multiple loci) these tables can become quite large.
 
 ### Quality control
 
+Quality control of sequencing runs was performed at the raw-read level
+(unmapped reads from `guppy` output) and at the mapped-read level (after
+`minimap2` mapping and `tidy_data` conversion).
+
 #### Analysis of raw reads
+
+Raw read plots and statistics were generated from `guppy`s
+*sequencing\_summary.txt* files and are shown in the
+[`raw_read_plots`](Rscripts/raw_read_plots.R) script.
 
 #### Analysis of mapped reads
 
+Mapped read analysis was performed using the
+[`mapped_read_plots`](Rscripts/mapped_read_plots.R) script.
+
+#### Run statistics
+
+Supplementary Table 1 in the manuscript based on raw and mapped features
+was calculated using the following script:
+[`calculate_run_statistics`](Rscripts/calculate_run_statistics.R).
+
 ### Detection of transcriptional units (TU)
 
+The detection of transcriptional units is a two-step process:  
+\- Collapsing of overlapping reads to TU-clusters is described in
+[`tu_cluster_generation.R`](Rscripts/tu_cluster_generation.R)  
+\- Splitting of of clusters based on sequencing depth on the 3´end is
+described in
+[`tu_subcluster_annotation`](Rscripts/tu_subcluster_annotation.R)
+
 ### Annotation of transcription start sites (TSS)
+
+The detection of transcription start sites (TSS) was based on the
+detection of transcriptional units and is described in
+[`transcription_start_sites`](Rscripts/transcription_start_sites.R).  
+A transcriptional start site table for each organsims can be found here:
+[*tss\_tables*](tables)
 
 ### Annotation of transcription termination sites (TTS)
 
@@ -343,6 +435,15 @@ Li, Heng, Bob Handsaker, Alec Wysoker, Tim Fennell, Jue Ruan, Nils
 Homer, Gabor Marth, Goncalo Abecasis, and Richard Durbin. 2009. “The
 Sequence Alignment/Map format and SAMtools.” *Bioinformatics* 25 (16):
 2078–9. <https://doi.org/10.1093/bioinformatics/btp352>.
+
+</div>
+
+<div id="ref-Liao2019a">
+
+Liao, Yang, Gordon K. Smyth, and Wei Shi. 2019. “The R package Rsubread
+is easier, faster, cheaper and better for alignment and quantification
+of RNA sequencing reads.” *Nucleic Acids Research*.
+<https://doi.org/10.1093/nar/gkz114>.
 
 </div>
 
