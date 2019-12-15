@@ -47,11 +47,18 @@ Max-von-Laue-Str. 9, D-60438, Frankfurt, Germany
           - [Analysis of raw reads](#analysis-of-raw-reads)
           - [Analysis of mapped reads](#analysis-of-mapped-reads)
           - [Run statistics](#run-statistics)
+      - [Detection of transcriptional units
+        (TU)](#detection-of-transcriptional-units-tu)
       - [Annotation of transcription start sites
         (TSS)](#annotation-of-transcription-start-sites-tss)
       - [Annotation of transcription termination sites
         (TTS)](#annotation-of-transcription-termination-sites-tts)
+      - [Single-read analysis](#single-read-analysis)
+          - [mRNA](#mrna)
+          - [rRNA](#rrna)
       - [Modified base detection](#modified-base-detection)
+          - [<span>`Tombo`</span>](#tombo)
+          - [Pileup mapping assignments](#pileup-mapping-assignments)
   - [Data availability](#data-availability)
       - [Raw sequencing files](#raw-sequencing-files)
       - [Additional data](#additional-data)
@@ -378,7 +385,11 @@ animated using the [’animted\_qc\`](Rscripts/animated_qc.R) script:
 #### Analysis of mapped reads
 
 Mapped read analysis was performed using the
-[`mapped_read_plots`](Rscripts/mapped_read_plots.R) script.
+[`mapped_read_plots`](Rscripts/mapped_read_plots.R) script. The number
+of reads mapping to different genomic features was calculated with
+`featurecounts` and visualized using the
+[`featurecounts_categories`](Rscripts/featurecounts_categories.R)
+script.
 
 #### Run statistics
 
@@ -386,7 +397,8 @@ Supplementary Table 1 in the manuscript based on raw and mapped features
 was calculated using the following script:
 [`calculate_run_statistics`](Rscripts/calculate_run_statistics.R).
 
-s \#\#\# Detection of transcriptional units (TU)  
+### Detection of transcriptional units (TU)
+
 The detection of transcriptional units is a two-step process:
 
   - Collapsing of overlapping reads to TU-clusters is described in
@@ -400,6 +412,11 @@ The clusters for each genome are saved in the
 Comparison to databases (manuscript Supplementary Figures 10a-c) were
 plotted using the
 [`tu_comparison_database`](Rscripts/tu_comparison_database.R) script.
+
+Prerequisites for the TU annotation, like sequencing of full-lenght
+transcripts and coverage bias towards 3´ end was evaluated based on the
+scripts [`fraction_full_length`](Rscripts/fraction_full_length.R) and
+[`coverage_drop_3prime`](Rscripts/coverage_drop_3prime.R).
 
 ### Annotation of transcription start sites (TSS)
 
@@ -418,7 +435,17 @@ script.
 A transcriptional termination site table for each organism can be found
 here: [*tts\_tables*](tables/tts_tables/)
 
+### Single-read analysis
+
+#### mRNA
+
+#### rRNA
+
 ### Modified base detection
+
+#### [`Tombo`](https://nanoporetech.github.io/tombo/)
+
+#### Pileup mapping assignments
 
 ## Data availability
 
