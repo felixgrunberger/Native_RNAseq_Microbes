@@ -439,9 +439,20 @@ here: [*tts\_tables*](tables/tts_tables/)
 
 ### Single-read analysis
 
+Single-read analysis was used to look at long 3´UTRs and processing
+events on the 16S and 23S rRNAs during ribosomal maturation.
+
 #### mRNA
 
+Examples are shown in Supplementary Fig. 8 of the manuscript and were
+plotted using the
+[`single_reads_pilin_hvo`](Rscripts/single_reads_pilin_hvo.R) and
+[`single_reads_alba_pfu`](Rscripts/single_reads_alba_pfu.R) scripts.
+
 #### rRNA
+
+Reads for plotting of Figure 4 were plotted using the
+[`single_reads_rrnac`](Rscripts/single_reads_rrnc.R) script.
 
 ### Modified base detection
 
