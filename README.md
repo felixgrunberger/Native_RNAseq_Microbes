@@ -480,6 +480,19 @@ plotted using a custom
 
 #### Pileup mapping assignments
 
+For calculating the frequency of correct, deleted and wrong nucleotides
+at a genomic position the function pileup from the Rsamtools package was
+used (<https://rdrr.io/bioc/Rsamtools/>). Plots were generated using the
+[`pileup_mod_bases`](Rscripts/pileup_mod_bases.R) R script. The results
+were compared to known modification sites in 16S rRNA for *Escherichia
+coli* (Boccaletto et al. [2018](#ref-Boccaletto2018)) and *Haloferax
+volcanii* (Grosjean et al. [2008](#ref-Grosjean2008)). Given the high
+degree of conservation of the modifying enzymes in archaea and because
+there was no reference set available for *Pyrococcus furiosus*, the
+results were compared to the five modified positions that are described
+for *H. volcanii* (910, 1352, 1432, 1450/1451 correspond to 938,
+1379,1469,1486/1487 in *P. furiosus*).
+
 ## Data availability
 
 ### Raw sequencing files
@@ -501,6 +514,26 @@ This project is under the general MIT License - see the
 ## References
 
 <div id="refs" class="references hanging-indent">
+
+<div id="ref-Boccaletto2018">
+
+Boccaletto, Pietro, Magdalena A. MacHnicka, Elzbieta Purta, Pawek
+Pitkowski, Blazej Baginski, Tomasz K. Wirecki, Valérie De Crécy-Lagard,
+et al. 2018. “MODOMICS: A database of RNA modification pathways. 2017
+update.” *Nucleic Acids Research*.
+<https://doi.org/10.1093/nar/gkx1030>.
+
+</div>
+
+<div id="ref-Grosjean2008">
+
+Grosjean, Henri, Christine Gaspin, Christian Marck, Wayne A. Decatur,
+and Valérie de Crécy-Lagard. 2008. “RNomics and Modomics in the
+halophilic archaea Haloferax volcanii: Identification of RNA
+modification genes.” *BMC Genomics* 9: 1–26.
+<https://doi.org/10.1186/1471-2164-9-470>.
+
+</div>
 
 <div id="ref-Li2018">
 
