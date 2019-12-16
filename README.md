@@ -153,6 +153,7 @@ Native_RNAseq_Microbes/
 |   ├── meme_data
 |   ├── enolase_data
 |   ├── poly_data
+|   ├── tombo_data
 |   └── operon_data
 ├── Rscrips
 ├── figures
@@ -446,6 +447,37 @@ here: [*tts\_tables*](tables/tts_tables/)
 
 #### [`Tombo`](https://nanoporetech.github.io/tombo/)
 
+We used `Tombo` (Version 1.5, <https://nanoporetech.github.io/tombo>) to
+identify modified bases based on a comparison to a theoretical
+distribution (*de novo* model) and based on the comparison to a
+reference data set (sample-compare model)(compare Stoiber et al.
+[2016](#ref-Stoiber2016)). The different steps include `preprocessing`,
+`resquiggling` and `plotting` of the raw signals at specific genomic
+coordinates and are well-described in the documentation.  
+The probability of modified bases was calculated using the
+`detect_modification` *de\_novo* command, written to *.wig* files using
+the `text_output browser_files` command and added to the `plot
+genome_locations` plot using the
+[`tombo_fractions_positions`](Rscripts/tombo_fractions_positions.R)
+script. For Fig. 6b the signals were calculated for both samples
+(wildtype and deletion mutant) and compared using the
+`control-fast5-basedirs` and `overplot Boxplot` option. For Fig 6c a
+reference data set was created by sorting the reads mapping to the 16S
+rRNA based on the position of the read start (before or after gene
+start), thereby dividing the data set in reads that belong to mature and
+unprocessed 16S rRNAs (script see here:
+[`filter_rrna_reads_for_tombo`](Rscripts/filter_rrna_reads_for_tombo.R)).
+The selected reads can be extracted using the custom Rscript or using
+the `fast5_subset` module of the
+[ont\_fast5\_api](https://github.com/nanoporetech/ont_fast5_api). Minion
+read names of reads that fulfill certain criteria therefore have to be
+written to a `read_id_list`.  
+The two different models (*de novo* and sample-compare using non-mature
+16S reads as a reference set) were applied to the complete 16S,
+base-modification-probabilities extracted from the tombo output and
+plotted using a custom
+[`tombo_16S_heatmap`](Rscripts/tombo_16S_heatmaps.R) script.
+
 #### Pileup mapping assignments
 
 ## Data availability
@@ -501,6 +533,16 @@ Loman, Nicholas J., Joshua Quick, and Jared T. Simpson. 2015. “A
 complete bacterial genome assembled de novo using only nanopore
 sequencing data.” *Nature Methods* 12 (8): 733–35.
 <https://doi.org/10.1038/nmeth.3444>.
+
+</div>
+
+<div id="ref-Stoiber2016">
+
+Stoiber, Marcus H, Joshua Quick, Rob Egan, Ji Eun Lee, Susan E Celniker,
+Robert Neely, Nicholas Loman, Len Pennacchio, and James B Brown. 2016.
+“De novo Identification of DNA Modifications Enabled by Genome-Guided
+Nanopore Signal Processing.” *bioRxiv*, 094672.
+<https://doi.org/10.1101/094672>.
 
 </div>
 
