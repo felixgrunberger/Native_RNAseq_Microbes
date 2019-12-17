@@ -722,6 +722,6 @@ hvo_export <- hvo_tss_table_ONT %>%
   dplyr::rename(GeneID = gene, TSS = median_utr5, number_of_reads = counts, annotation = name) %>%
   dplyr::select(GeneID, TSS, number_of_reads, strand, utr5_length, old_name, annotation) 
 
-writexl::write_xlsx(x = pfu_export, path = here("tables/tss_tables/tss_hvo.xlsx"))
+writexl::write_xlsx(x = hvo_export, path = here("tables/tss_tables/tss_hvo.xlsx"))
 
 
