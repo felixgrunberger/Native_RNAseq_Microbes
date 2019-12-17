@@ -157,7 +157,11 @@ Native_RNAseq_Microbes/
 |   └── operon_data
 ├── Rscrips
 ├── figures
-├── tables
+├── tables/
+|   ├── tss_tables
+|   ├── tts_tables
+|   ├── tu_tables
+|   └── counts_tables
 ├── LICENSE
 └── README
 ```
@@ -389,9 +393,9 @@ animated using the [’animted\_qc\`](Rscripts/animated_qc.R) script:
 Mapped read analysis was performed using the
 [`mapped_read_plots`](Rscripts/mapped_read_plots.R) script. The number
 of reads mapping to different genomic features was calculated with
-`featurecounts` and visualized using the
-[`featurecounts_categories`](Rscripts/featurecounts_categories.R)
-script.
+`featurecounts`, visualized using the
+[`featurecounts_categories`](Rscripts/featurecounts_categories.R) script
+and are stored in the [`counts_table`](tables/counts_tables/) files.
 
 #### Run statistics
 
