@@ -712,7 +712,9 @@ writexl::write_xlsx(x = pfu_export, path = here("tables/tss_tables/tss_pfu.xlsx"
 
 #...............................hvo
 #...................load annotation data
-hvo_annotation <- fread(here("data/genome_data/hvo_annotation.tsv"))
+hvo_annotation <- fread(here("data/genome_data/hvo_annotation.tsv")) %>%
+  rowwise() %>%
+  mutate(name = str_split_fixed(name, ";",2)[1])
 
 #...................write table
 hvo_export <- hvo_tss_table_ONT %>%
