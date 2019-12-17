@@ -515,7 +515,7 @@ writexl::write_xlsx(x = ecoli_export, path = here("tables/tts_tables/tts_ecoli.x
 #...............................pfu
 #...................load annotation data
 pfu_annotation <- fread(here("data/genome_data/pfu_annotation.tsv"))
-pfu_utr3$gene
+
 #...................write table
 pfu_export <- pfu_utr3 %>%
   rowwise() %>%
@@ -528,7 +528,9 @@ writexl::write_xlsx(x = pfu_export, path = here("tables/tts_tables/tts_pfu.xlsx"
 
 #...............................hvo
 #...................load annotation data
-hvo_annotation <- fread(here("data/genome_data/hvo_annotation.tsv"))
+hvo_annotation <- fread(here("data/genome_data/hvo_annotation.tsv")) %>%
+  rowwise() %>%
+  mutate(name = str_split_fixed(name, ";",2)[1])
 
 #...................write table
 hvo_export <- hvo_utr3 %>%
@@ -536,6 +538,6 @@ hvo_export <- hvo_utr3 %>%
   dplyr::rename(GeneID = gene, TTS = median_utr3, annotation = name) %>%
   dplyr::select(GeneID, TTS, strand, utr3_length, old_name, annotation) 
 
-writexl::write_xlsx(x = pfu_export, path = here("tables/tts_tables/tts_hvo.xlsx"))
+writexl::write_xlsx(x = hvo_export, path = here("tables/tts_tables/tts_hvo.xlsx"))
 
 
