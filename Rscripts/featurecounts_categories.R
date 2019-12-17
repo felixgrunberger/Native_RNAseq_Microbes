@@ -134,3 +134,58 @@ pdf(here("figures/mapping_to_features_total_counts.pdf"),
 gg_total_counts
 dev.off()
 
+
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+# WRITE TO TABLES
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+#...................................ONT transcript abundance data for TEX samples 
+counts_files_tex <- paste(here("data/tidy_data/"), list.files(here("data/tidy_data/"),pattern = "_tex_gene_table"), sep = "")
+
+#...................................get sample names
+sample_names <- unlist(lapply(counts_files_tex, FUN=function(x){str_split_fixed(str_split_fixed(x, "_gene", 2)[1],"tidy_data/",2)[2]}))
+
+#...................................get annotation files
+ecoli_annotation <- fread(here("data/genome_data/ecoli_annotation.tsv"))
+pfu_annotation <- fread(here("data/genome_data/pfu_annotation.tsv"))
+hvo_annotation <- fread(here("data/genome_data/hvo_annotation.tsv"))
+
+#...................................write to tsv files
+#.................................ecoli
+load(counts_files_tex[1])
+full_gene_table_ecoli <- full_gene_table %>%
+    left_join(ecoli_annotation, by = c("GeneID" = "id")) %>%
+    dplyr::select(GeneID, Chr, counts, locus_name, locus_tag) %>%
+  arrange(desc(counts))
+
+writexl::write_xlsx(x = full_gene_table_ecoli, 
+                    path = here("tables/counts_tables/counts_ecoli_tex.xlsx"))
+
+#.................................pfu
+load(counts_files_tex[3])
+full_gene_table_pfu <- full_gene_table %>%
+  rowwise() %>%
+  mutate(GeneID = str_split_fixed(GeneID, ".p01", 2)[1]) %>%
+  left_join(pfu_annotation, by = c("GeneID" = "gene")) %>%
+  dplyr::rename(locus_tag = old_name) %>%
+  dplyr::select(GeneID, Chr, counts, locus_name, locus_tag) %>%
+  arrange(desc(counts))
+
+writexl::write_xlsx(x = full_gene_table_pfu, 
+                    path = here("tables/counts_tables/counts_pfu_tex.xlsx"))
+
+#.................................hvo
+load(counts_files_tex[2])
+full_gene_table_hvo <- full_gene_table %>%
+  left_join(hvo_annotation, by = c("GeneID" = "id_name")) %>%
+  dplyr::rename(locus_tag = old_name) %>%
+  dplyr::select(GeneID, Chr, counts, locus_name, locus_tag) %>%
+  arrange(desc(counts))
+
+writexl::write_xlsx(x = full_gene_table_hvo, 
+                    path = here("tables/counts_tables/counts_hvo_tex.xlsx"))
+
+
+
+
+
