@@ -1,5 +1,5 @@
-Nanopore-based native RNA sequencing provides insights into prokaryotic
-transcription, operon structures, rRNA maturation and modifications
+Exploring prokaryotic transcription, operon structures, rRNA maturation
+and modifications using Nanopore-based native RNA sequencing
 ================
 Felix Grünberger<sup>1</sup>, Robert Knüppel<sup>2</sup>, Michael
 Jüttner<sup>2</sup>, Martin Fenk<sup>1</sup>, Andreas
@@ -71,12 +71,13 @@ Max-von-Laue-Str. 9, D-60438, Frankfurt, Germany
 
 ## Information about this repository
 
-This is the repository for the manuscript “Nanopore-based native RNA
-sequencing provides insights into prokaryotic transcription, operon
-structures, rRNA maturation and modifications”. It contains a
-description of the bioinformatical tools used to process native RNA
-sequencing data and the downstream analysis mostly based on custom
-[Rscripts](Rscripts).
+This is the repository for the manuscript “Exploring prokaryotic
+transcription, operon structures, rRNA maturation and modifications
+using Nanopore-based native RNA sequencing”, which can be found on
+<a href = "https://www.biorxiv.org/content/10.1101/2019.12.18.880849v2">bioRxiv</a>.
+It contains a description of the bioinformatical tools used to process
+native RNA sequencing data and the downstream analysis mostly based on
+custom [Rscripts](Rscripts).
 
 The repository is currently actively developed.
 
@@ -138,7 +139,7 @@ with one subfolder per multi-read input file.
 
 ### Navigation
 
-We managed our folders in the follwoing way:
+We managed our folders in the following way:
 
 ``` bash
 Native_RNAseq_Microbes/
