@@ -16,6 +16,38 @@ source(here("Rscripts/load_libraries.R"))
 # LOAD FUNCTIONS
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
+#...................................violin plot
+GeomSplitViolin <- ggproto("GeomSplitViolin", GeomViolin, 
+                           draw_group = function(self, data, ..., draw_quantiles = NULL) {
+                             data <- transform(data, xminv = x - violinwidth * (x - xmin), xmaxv = x + violinwidth * (xmax - x))
+                             grp <- data[1, "group"]
+                             newdata <- plyr::arrange(transform(data, x = if (grp %% 2 == 1) xminv else xmaxv), if (grp %% 2 == 1) y else -y)
+                             newdata <- rbind(newdata[1, ], newdata, newdata[nrow(newdata), ], newdata[1, ])
+                             newdata[c(1, nrow(newdata) - 1, nrow(newdata)), "x"] <- round(newdata[1, "x"])
+                             
+                             if (length(draw_quantiles) > 0 & !scales::zero_range(range(data$y))) {
+                               stopifnot(all(draw_quantiles >= 0), all(draw_quantiles <=
+                                                                         1))
+                               quantiles <- ggplot2:::create_quantile_segment_frame(data, draw_quantiles)
+                               aesthetics <- data[rep(1, nrow(quantiles)), setdiff(names(data), c("x", "y")), drop = FALSE]
+                               aesthetics$alpha <- rep(1, nrow(quantiles))
+                               both <- cbind(quantiles, aesthetics)
+                               quantile_grob <- GeomPath$draw_panel(both, ...)
+                               ggplot2:::ggname("geom_split_violin", grid::grobTree(GeomPolygon$draw_panel(newdata, ...), quantile_grob))
+                             }
+                             else {
+                               ggplot2:::ggname("geom_split_violin", GeomPolygon$draw_panel(newdata, ...))
+                             }
+                           })
+
+geom_split_violin <- function(mapping = NULL, data = NULL, stat = "ydensity", position = "identity", ..., 
+                              draw_quantiles = NULL, trim = TRUE, scale = "area", na.rm = FALSE, 
+                              show.legend = NA, inherit.aes = TRUE) {
+  layer(data = data, mapping = mapping, stat = stat, geom = GeomSplitViolin, 
+        position = position, show.legend = show.legend, inherit.aes = inherit.aes, 
+        params = list(trim = trim, scale = scale, draw_quantiles = draw_quantiles, na.rm = na.rm, ...))
+}
+
 #...................................is a gene start/end or rest of an operon
 type_of_gene_in_operon <- function(genes_in_operon_table, type = c("first", "last")){
   plus  <- str_split(genes_in_operon_table$genes_in_operon[genes_in_operon_table$strand_operon == "+"], ",")
@@ -179,6 +211,7 @@ hvo_tss <- readxl::read_xlsx(path = here("data/tss_data/hvo_tss.xlsx"), sheet = 
 # LOAD ONT PREDICTED DATA and combine with ILLUMINA
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
+
 #...................................load transcriptional unit annotation
 filtered_ids  <- paste(here("data/operon_data/"), list.files(here("data/operon_data/"),pattern = "for_operons.tsv"), sep = "")
 collapsed_ids <- paste(here("data/operon_data/"), list.files(here("data/operon_data/"),pattern = "tex_operons.tsv"), sep = "")
@@ -226,7 +259,7 @@ upsetr_table <- c(`PFU_ONT` = nrow(pfu_tss_table) - nrow(pfu_tss),
                   `HVO_ILLUMINA` = nrow(hvo_tss_table) - nrow(hvo_tss_table_ONT), 
                   `HVO_ONT&HVO_ILLUMINA` = nrow(hvo_tss) + nrow(hvo_tss_table_ONT) - nrow(hvo_tss_table))
 
-#...................................group comparison (Fig. 2a)
+#...................................group comparison (see Supplementary Fig. 6a)
 pdf(here("figures/tss_intersections.pdf"),
     width = 14, height = 14, paper = "special",onefile=FALSE)
 upset(data = fromExpression(upsetr_table), 
@@ -245,6 +278,47 @@ dev.off()
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 #...................................modify input tables from ILLUMINA AND ONT (filter for utrlength)
+
+#.................................ESCHERICHIA COLI
+tss_ecoli <- inner_join(ecoli_tss, subset(ecoli_tss_table_ONT, counts >= 1), by = c("id_name" = "gene")) %>%
+  distinct(id_name, .keep_all = TRUE) %>%
+  mutate(nt_change = ifelse(Strand == "+", Pos - median_utr5, median_utr5 - Pos),
+         sequencing_set = "ecoli") %>%
+  mutate(UTRlength = as.numeric(UTRlength))
+
+#.................................PYROCOCUCCUS FURIOSUS
+tss_pfu <- inner_join(pfu_tss, subset(pfu_tss_table_ONT, counts >= 1), by = c("Locus_tag" = "new_gene")) %>%
+  distinct(Locus_tag, .keep_all = TRUE) %>%
+  mutate(nt_change = ifelse(Strand == "+", Pos - median_utr5, median_utr5 - Pos),
+         sequencing_set = "pfu") 
+
+#...................................HALOFERAX VOLCANII
+tss_hvo <- inner_join(hvo_tss, subset(hvo_tss_table_ONT, counts >= 1), by = c("ID" = "gene")) %>%
+  distinct(Gene, .keep_all = TRUE) %>%
+  mutate(Pos = ifelse(strand_gene == "+", start_gene - UTRlength, end_gene + UTRlength)) %>%
+  mutate(nt_change = ifelse(strand_gene == "+", Pos - median_utr5, median_utr5 - Pos),
+         sequencing_set = "hvo") 
+
+
+#...................................merge all
+tss_all <- bind_rows(tss_ecoli %>%
+                       dplyr::select(nt_change, sequencing_set), 
+                     tss_pfu %>%
+                       dplyr::select(nt_change, sequencing_set), 
+                     tss_hvo %>%
+                       dplyr::select(nt_change, sequencing_set))
+
+#...................................plot distance between ONT uncorrected 5´end and Illumina ends (Fig. 2a)
+pdf(here("figures/utr5_uncorrected_distance.pdf"),
+    width = 7, height = 7, paper = "special",onefile=FALSE)
+ggplot(tss_all, aes(x = nt_change)) +
+  facet_grid(rows = vars(sequencing_set)) +
+  geom_vline(xintercept = -12) +
+  geom_histogram(binwidth = 1, color = "white", lwd = .3) +
+  scale_x_continuous(limits = c(-40,40)) +
+  theme_Publication_white()
+dev.off()  
+
 
 #.................................ESCHERICHIA COLI
 ecoli_tss_ILLUMINA_filtered <- ecoli_tss %>%
@@ -311,24 +385,6 @@ tss_all_corrected$organism <-  factor(tss_all_corrected$organism,
 heat_color_npg <- rev(c(pal_npg()(10)[4],
                         pal_npg()(10)[7]))
 
-#...................................plot uncorrected 5´UTR of three datasets (each TEX treated) in comparison to reference sets (Supplementary Fig. 6a)
-gg_utr_uncorrected <- ggplot(data = tss_all_uncorrected, aes(x = utrlength, y = organism, color = set, fill = set)) +
-  geom_density_ridges2(aes(height =..ndensity..), scale = 0.9, alpha = 0.6, size = 1) +
-  scale_x_continuous(limits = c(-40,100), breaks = c(-40,-12,0,50, 100), expand = c(0,0)) +
-  scale_y_discrete(expand = c(0,0,0.5,0)) +
-  scale_fill_manual(values = heat_color_npg) +
-  scale_color_manual(values = heat_color_npg) +
-  theme_Publication_white() +
-  xlab("5´ UTR length (nt)") +
-  ylab("") +
-  theme(axis.text.y = element_text(face = "italic")) +
-  guides(color = guide_legend(title = ""), fill = guide_legend(title = ""), linetype = guide_legend(title = ""))
-
-pdf(here("figures/utr5_uncorrected.pdf"),
-    width = 7, height = 7, paper = "special",onefile=FALSE)
-gg_utr_uncorrected
-dev.off()
-
 #...................................plot corrected 5´UTR of three datasets (each TEX treated) in comparison to reference sets (Fig. 2b)
 gg_utr_corrected <- ggplot(data = tss_all_corrected, aes(y = utrlength, x = organism, fill = set, color = set)) +
   geom_split_violin(scale = "width", trim = F, alpha = 0.5, size = 1) +
@@ -342,6 +398,8 @@ gg_utr_corrected <- ggplot(data = tss_all_corrected, aes(y = utrlength, x = orga
   scale_fill_manual(values = heat_color_npg) +
   scale_color_manual(values = heat_color_npg)
 
+
+
 pdf(here("figures/utr5_corrected.pdf"),
     width = 7, height = 7, paper = "special",onefile=FALSE)
 gg_utr_corrected
@@ -351,37 +409,6 @@ dev.off()
 tss_all_corrected %>%
   group_by(organism, set) %>%
   summarise(median_length = median(utrlength))
-
-#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-# CHECK IF DISTRIBUTION DIFFERS BY 12 NT´s? CORRELATION TO ILLUMINA DRNA SEQ DATA (1:1 plots)
-#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-
-#.................................ESCHERICHIA COLI
-tss_ecoli <- inner_join(ecoli_tss, ecoli_tss_table_ONT, by = c("id_name" = "gene")) %>%
-  distinct(id_name, .keep_all = TRUE) %>%
-  mutate(nt_change = ifelse(Strand == "+", Pos - median_utr5, median_utr5 - Pos),
-         sequencing_set = "ecoli") 
-
-#.................................PYROCOCUCCUS FURIOSUS
-tss_pfu <- inner_join(pfu_tss, pfu_tss_table_ONT, by = c("Locus_tag" = "new_gene")) %>%
-  distinct(Locus_tag, .keep_all = TRUE) %>%
-  mutate(nt_change = ifelse(Strand == "+", Pos - median_utr5, median_utr5 - Pos),
-         sequencing_set = "pfu") 
-
-#...................................HALOFERAX VOLCANII
-tss_hvo <- inner_join(hvo_tss, hvo_tss_table_ONT, by = c("ID" = "gene")) %>%
-  distinct(Gene, .keep_all = TRUE) %>%
-  mutate(Pos = ifelse(strand_gene == "+", start_gene - UTRlength, end_gene + UTRlength)) %>%
-  mutate(nt_change = ifelse(strand_gene == "+", Pos - median_utr5, median_utr5 - Pos),
-         sequencing_set = "hvo") 
-
-#...................................merge all
-tss_all <- bind_rows(tss_ecoli %>%
-                       dplyr::select(nt_change, sequencing_set), 
-                     tss_pfu %>%
-                       dplyr::select(nt_change, sequencing_set), 
-                     tss_hvo %>%
-                       dplyr::select(nt_change, sequencing_set))
 
 #...................................filter out outliers for correct color coding
 tss_ecoli_plot <- tss_ecoli %>%
@@ -414,6 +441,7 @@ pdf(here("figures/utr5_ecoli_full.pdf"),
     width = 7, height = 7, paper = "special",onefile=FALSE)
 gg_utr5_corr(tss_ecoli_plot, min_v = -20, max_v = 300)
 dev.off()
+
 
 #...................................plot ecoli small (Supplementary Fig. 6b right)
 tss_ecoli_plot_filtered <- tss_ecoli_plot %>%
@@ -456,6 +484,42 @@ pdf(here("figures/utr5_hvo_small.pdf"),
     width = 7, height = 7, paper = "special",onefile=FALSE)
 gg_utr5_corr(tss_hvo_plot_filtered, min_v = -20, max_v = 50)
 dev.off()
+
+
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+# SEQUENCING DEPTH INFLUENCE
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+#...................................calculate correlations
+pear_cor_counts <- function(dataset, organism){
+  counts <- list()
+  cor <- list()
+  cor_set <- NULL
+  for(i in 1:100){
+    subset <- dataset %>% mutate(utr5_length = utr5_length + 12) %>%
+      dplyr::filter(UTRlength < 300, UTRlength >= 0,utr5_length <300, utr5_length >= 0, counts >= i)
+    counts[i] <- as.integer(i)
+    cor[i] <- cor(subset$UTRlength,
+                  subset$utr5_length, method = "pearson")
+  }
+  cor_set <- data.table(counts = unlist(counts), cor = unlist(cor)) %>%
+    as_tibble() %>% mutate(group = organism)
+}
+
+cor_pfu   <- pear_cor_counts(tss_pfu, "pfu")
+cor_hvo   <- pear_cor_counts(tss_hvo, "hvo")
+cor_ecoli <- pear_cor_counts(tss_ecoli, "ecoli")
+cor_all   <- rbind(cor_pfu, cor_hvo, cor_ecoli)
+
+#...................................plot correlations
+ggplot(data = cor_pfu, aes(x = counts, y = cor, group = group, color = group, fill = group)) +
+  geom_smooth(se = F, span = 0.1) +
+  geom_ribbon(alpha = 0.2,aes(ymin = 0,ymax = predict(loess(cor ~ counts, span = 0.1)))) +
+  scale_fill_npg() +
+  scale_color_npg() +
+  theme_Publication_white() +
+  scale_x_continuous(limits = c(1,100),expand = expand_scale(add = c(0,0))) +
+  geom_vline(xintercept = 5, linetype = "dashed")
 
 
 
