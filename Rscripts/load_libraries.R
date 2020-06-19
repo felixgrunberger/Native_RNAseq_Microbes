@@ -3,8 +3,8 @@
 #...................................libraries
 packages <- c("ggeconodist", "tidyverse", "here", "ggthemes", "gganimate","writexl",
               "data.table", "ggExtra", "Rsamtools", "GenomicAlignments", "UpSetR",
-              "seqTools", "Rsubread", "ape", "DT", "ggpubr", "ggridges", "ggsci",
-              "CoverageView", "gghalves", "pryr", "fst", "R.utils")
+              "seqTools", "Rsubread", "ape", "DT", "ggpubr", "ggridges", "ggsci","LncFinder",
+              "CoverageView", "gghalves", "pryr", "fst", "R.utils", "readxl", "ggseqlogo")
 
 invisible(lapply(packages, require, character.only = TRUE))
 

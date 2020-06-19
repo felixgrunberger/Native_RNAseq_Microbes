@@ -116,6 +116,19 @@ nucleotide_enrichment_plotting <- function(input_matrix){
     scale_color_manual(values = color_npg4)
 }
 
+#...................................calculate delta g using RNAfold package
+calculate_delta_g_rnafold <- function(input_sequences, setname){
+    calc <- run_RNAfold(Sequences = input_sequences,parallel.cores = 4,
+                      RNAfold.path = "/opt/anaconda3/bin/RNAfold") %>%
+    t() %>%
+    as_tibble() %>%
+    dplyr::rename(g = V3) %>%
+    mutate(g = as.numeric(g)) %>%
+    mutate(set = setname) %>%
+    dplyr::select(g, set)
+  return(calc)
+}
+
 
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 # LOAD & TIDY DATA
@@ -155,7 +168,9 @@ ecoli_utr3 <- fread(filtered_ids[1]) %>%
   distinct(gene, .keep_all = T) %>%
   rowwise() %>%
   mutate(terminator_sequence = ifelse(strand == "+", as.character(ecoli_fasta$`U00096.2 Escherichia coli str. K-12 substr. MG1655, complete genome`[(median_utr3 - 45):(median_utr3 + 45)]),
-                                      as.character(reverseComplement(ecoli_fasta$`U00096.2 Escherichia coli str. K-12 substr. MG1655, complete genome`[(median_utr3 - 45):(median_utr3 + 45)])))) 
+                                      as.character(reverseComplement(ecoli_fasta$`U00096.2 Escherichia coli str. K-12 substr. MG1655, complete genome`[(median_utr3 - 45):(median_utr3 + 45)]))),
+         delta_g_sequence = ifelse(strand == "+", as.character(ecoli_fasta$`U00096.2 Escherichia coli str. K-12 substr. MG1655, complete genome`[(median_utr3 - 45):(median_utr3 + 0)]),
+                                   as.character(reverseComplement(ecoli_fasta$`U00096.2 Escherichia coli str. K-12 substr. MG1655, complete genome`[(median_utr3 - 0):(median_utr3 + 45)])))) 
 
 #...............................P. FURIOSUS
 pfu_utr3 <- fread(filtered_ids[4]) %>%
@@ -171,7 +186,9 @@ pfu_utr3 <- fread(filtered_ids[4]) %>%
   distinct(gene, .keep_all = T) %>%
   rowwise() %>%
   mutate(terminator_sequence = ifelse(strand == "+", as.character(pfu_fasta$CP023154[(median_utr3 - 45):(median_utr3 + 45)]),
-                                      as.character(reverseComplement(pfu_fasta$CP023154[(median_utr3 - 45):(median_utr3 + 45)])))) 
+                                      as.character(reverseComplement(pfu_fasta$CP023154[(median_utr3 - 45):(median_utr3 + 45)]))),
+         delta_g_sequence = ifelse(strand == "+", as.character(pfu_fasta$CP023154[(median_utr3 - 45):(median_utr3 + 0)]),
+                                   as.character(reverseComplement(pfu_fasta$CP023154[(median_utr3 - 0):(median_utr3 + 45)])))) 
 
 #...............................H. VOLCANII
 #.............................include genome information to include chr information
@@ -209,16 +226,26 @@ hvo_utr3 <- fread(filtered_ids[3]) %>%
   rowwise() %>%
   dplyr::filter(median_utr3 > 45, median_utr3 < chr_size) %>%
   mutate(terminator_sequence = ifelse(strand == "+" & seqid == "NC_013964.1", as.character(hvo_fasta$`NC_013964.1 Haloferax volcanii DS2 plasmid pHV3, complete sequence`[(median_utr3 - 45):(median_utr3 + 45)]),
-                                  ifelse(strand == "+" & seqid == "NC_013965.1", as.character(hvo_fasta$`NC_013965.1 Haloferax volcanii DS2 plasmid pHV2, complete sequence`[(median_utr3 - 45):(median_utr3 + 45)]),
-                                    ifelse(strand == "+" & seqid == "NC_013966.1", as.character(hvo_fasta$`NC_013966.1 Haloferax volcanii DS2 plasmid pHV4, complete sequence`[(median_utr3 - 45):(median_utr3 + 45)]),
-                                           ifelse(strand == "+" & seqid == "NC_013967.1", as.character(hvo_fasta$`NC_013967.1 Haloferax volcanii DS2, complete genome`[(median_utr3 - 45):(median_utr3 + 45)]),
-                                                  ifelse(strand == "+" & seqid == "NC_013968.1", as.character(hvo_fasta$`NC_013968.1 Haloferax volcanii DS2 plasmid pHV1, complete sequence`[(median_utr3 - 45):(median_utr3 + 45)]),
-                                                         ifelse(strand == "-" & seqid == "NC_013968.1", as.character(reverseComplement(hvo_fasta$`NC_013968.1 Haloferax volcanii DS2 plasmid pHV1, complete sequence`[(median_utr3 - 45):(median_utr3 + 45)])),
-                                                                ifelse(strand == "-" & seqid == "NC_013967.1", as.character(reverseComplement(hvo_fasta$`NC_013967.1 Haloferax volcanii DS2, complete genome`[(median_utr3 - 45):(median_utr3 + 45)])),
-                                                                       ifelse(strand == "-" & seqid == "NC_013966.1", as.character(reverseComplement(hvo_fasta$`NC_013966.1 Haloferax volcanii DS2 plasmid pHV4, complete sequence`[(median_utr3 - 45):(median_utr3 + 45)])),
-                                                                            ifelse(strand == "-" & seqid == "NC_013965.1", as.character(reverseComplement(hvo_fasta$`NC_013965.1 Haloferax volcanii DS2 plasmid pHV2, complete sequence`[(median_utr3 - 45):(median_utr3 + 45)])),
-                                                                              ifelse(strand == "-" & seqid == "NC_013964.1", as.character(reverseComplement(hvo_fasta$`NC_013964.1 Haloferax volcanii DS2 plasmid pHV3, complete sequence`[(median_utr3 - 45):(median_utr3 + 45)]))))))))))))) %>%
-  dplyr::select(median_utr3, gene, strand, utr3_length, start_operon, end_operon, group, terminator_sequence)
+                                      ifelse(strand == "+" & seqid == "NC_013965.1", as.character(hvo_fasta$`NC_013965.1 Haloferax volcanii DS2 plasmid pHV2, complete sequence`[(median_utr3 - 45):(median_utr3 + 45)]),
+                                             ifelse(strand == "+" & seqid == "NC_013966.1", as.character(hvo_fasta$`NC_013966.1 Haloferax volcanii DS2 plasmid pHV4, complete sequence`[(median_utr3 - 45):(median_utr3 + 45)]),
+                                                    ifelse(strand == "+" & seqid == "NC_013967.1", as.character(hvo_fasta$`NC_013967.1 Haloferax volcanii DS2, complete genome`[(median_utr3 - 45):(median_utr3 + 45)]),
+                                                           ifelse(strand == "+" & seqid == "NC_013968.1", as.character(hvo_fasta$`NC_013968.1 Haloferax volcanii DS2 plasmid pHV1, complete sequence`[(median_utr3 - 45):(median_utr3 + 45)]),
+                                                                  ifelse(strand == "-" & seqid == "NC_013968.1", as.character(reverseComplement(hvo_fasta$`NC_013968.1 Haloferax volcanii DS2 plasmid pHV1, complete sequence`[(median_utr3 - 45):(median_utr3 + 45)])),
+                                                                         ifelse(strand == "-" & seqid == "NC_013967.1", as.character(reverseComplement(hvo_fasta$`NC_013967.1 Haloferax volcanii DS2, complete genome`[(median_utr3 - 45):(median_utr3 + 45)])),
+                                                                                ifelse(strand == "-" & seqid == "NC_013966.1", as.character(reverseComplement(hvo_fasta$`NC_013966.1 Haloferax volcanii DS2 plasmid pHV4, complete sequence`[(median_utr3 - 45):(median_utr3 + 45)])),
+                                                                                       ifelse(strand == "-" & seqid == "NC_013965.1", as.character(reverseComplement(hvo_fasta$`NC_013965.1 Haloferax volcanii DS2 plasmid pHV2, complete sequence`[(median_utr3 - 45):(median_utr3 + 45)])),
+                                                                                              ifelse(strand == "-" & seqid == "NC_013964.1", as.character(reverseComplement(hvo_fasta$`NC_013964.1 Haloferax volcanii DS2 plasmid pHV3, complete sequence`[(median_utr3 - 45):(median_utr3 + 45)])))))))))))),
+         delta_g_sequence = ifelse(strand == "+" & seqid == "NC_013964.1", as.character(hvo_fasta$`NC_013964.1 Haloferax volcanii DS2 plasmid pHV3, complete sequence`[(median_utr3 - 45):(median_utr3 + 0)]),
+                                   ifelse(strand == "+" & seqid == "NC_013965.1", as.character(hvo_fasta$`NC_013965.1 Haloferax volcanii DS2 plasmid pHV2, complete sequence`[(median_utr3 - 45):(median_utr3 + 0)]),
+                                          ifelse(strand == "+" & seqid == "NC_013966.1", as.character(hvo_fasta$`NC_013966.1 Haloferax volcanii DS2 plasmid pHV4, complete sequence`[(median_utr3 - 45):(median_utr3 + 0)]),
+                                                 ifelse(strand == "+" & seqid == "NC_013967.1", as.character(hvo_fasta$`NC_013967.1 Haloferax volcanii DS2, complete genome`[(median_utr3 - 45):(median_utr3 + 0)]),
+                                                        ifelse(strand == "+" & seqid == "NC_013968.1", as.character(hvo_fasta$`NC_013968.1 Haloferax volcanii DS2 plasmid pHV1, complete sequence`[(median_utr3 - 45):(median_utr3 + 0)]),
+                                                               ifelse(strand == "-" & seqid == "NC_013968.1", as.character(reverseComplement(hvo_fasta$`NC_013968.1 Haloferax volcanii DS2 plasmid pHV1, complete sequence`[(median_utr3 - 0):(median_utr3 + 45)])),
+                                                                      ifelse(strand == "-" & seqid == "NC_013967.1", as.character(reverseComplement(hvo_fasta$`NC_013967.1 Haloferax volcanii DS2, complete genome`[(median_utr3 - 0):(median_utr3 + 45)])),
+                                                                             ifelse(strand == "-" & seqid == "NC_013966.1", as.character(reverseComplement(hvo_fasta$`NC_013966.1 Haloferax volcanii DS2 plasmid pHV4, complete sequence`[(median_utr3 - 0):(median_utr3 + 45)])),
+                                                                                    ifelse(strand == "-" & seqid == "NC_013965.1", as.character(reverseComplement(hvo_fasta$`NC_013965.1 Haloferax volcanii DS2 plasmid pHV2, complete sequence`[(median_utr3 - 0):(median_utr3 + 45)])),
+                                                                                           ifelse(strand == "-" & seqid == "NC_013964.1", as.character(reverseComplement(hvo_fasta$`NC_013964.1 Haloferax volcanii DS2 plasmid pHV3, complete sequence`[(median_utr3 - 0):(median_utr3 + 45)]))))))))))))) %>%
+  dplyr::select(median_utr3, gene, strand, utr3_length, start_operon, end_operon, group, terminator_sequence,delta_g_sequence)
 
 
 #.................................write terminator sequences from -45 to +45 to fasta file
@@ -239,46 +266,75 @@ write.fasta(as.list(hvo_utr3$terminator_sequence),
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 #.................................comparison of ecoli data to term seq set (combine with gff)
-termseq_ecoli <- read_excel(<path to term seq study in e coli>,skip = 11) %>%
+termseq_ecoli <- read_xlsx(here("data/tts_data/termseq_ecoli.xlsx"),skip = 11) %>%
   mutate(short_name = substr(`Locus tag`, 9, 12), start = `gene fr`) %>%
   mutate(CDS_end = ifelse(`Gene strand` == "+", `gene to`, `gene fr`)) %>%
   mutate(utr3_length =    ifelse(`Gene strand` == "+", `primary 3' end position` - CDS_end, CDS_end - `primary 3' end position`)) %>%
   mutate(sequencing_set = "ecoli", seq = "Illumina") %>%
   dplyr::select(sequencing_set, utr3_length, seq)
 
+#.................................comparison to hvo data
+berkemer <- readxl::read_xlsx(here("data/tts_data/termseq_hvo.xlsx"),skip = 1) %>%
+  dplyr::filter(usGeneType == "CDS", usTTS == -1) %>%
+  dplyr::rename(old_name = usGeneID, utr3_length = `3’UTR length`) %>%
+  dplyr::select(TTS, strand, utr3_length, old_name) %>% dplyr::mutate(seq = "Illumina") 
+
 #.................................combine all
-utr3_all <- rbind(ecoli_utr3 %>%
+utr3_all <- rbind(ecoli_utr3 %>% ungroup () %>% dplyr::select(utr3_length) %>%
                     mutate(sequencing_set = "ecoli", seq = "ONT"), 
-                  pfu_utr3 %>%
+                  termseq_ecoli %>% dplyr::select(utr3_length) %>%
+                    mutate(sequencing_set = "ecoli", seq = "ILL"),
+                  pfu_utr3 %>% ungroup () %>% dplyr::select(utr3_length) %>%
                     mutate(sequencing_set = "pfu", seq = "ONT"), 
-                  hvo_utr3 %>%
-                    mutate(sequencing_set = "hvo", seq = "ONT")) %>%
-  dplyr::select(utr3_length, sequencing_set, seq) %>%
-  rbind(termseq_ecoli)
+                  hvo_utr3 %>% ungroup () %>% dplyr::select(utr3_length) %>%
+                    mutate(sequencing_set = "hvo", seq = "ONT"),
+                  berkemer %>% dplyr::select(utr3_length) %>%
+                    mutate(sequencing_set = "hvo", seq = "ILL")) %>%
+  dplyr::select(utr3_length, sequencing_set, seq) 
 
 #.................................reorder levels
 utr3_all$sequencing_set <-  factor(utr3_all$sequencing_set, 
                                    levels = rev(c("ecoli", "pfu", "hvo")))
-
+utr3_all$seq <-  factor(utr3_all$seq, 
+                                   levels = rev(c("ONT", "ILL")))
 #.................................set colors
 color_npg2 <- c(pal_npg()(10)[7],
                 pal_npg()(10)[4])
 
 #.................................plot 3´UTR lengths (ONT only & comparison to termseq for ecoli, Fig. 2c)
 gg_utr3 <- ggplot(data = utr3_all, aes(x = utr3_length, y = sequencing_set, fill = seq, color = seq)) +
-  geom_density_ridges2(alpha = 0.4, size = 1, scale = 1, color = NA) +
-  geom_density_ridges2(alpha = 0.8, size = 0.2, scale = 0.95, stat = "binline", draw_baseline = FALSE, bins = 100, color = "black") +
+  geom_density_ridges2(alpha = 0.4, size = 1, scale = 1, color = NA, binwidth = 1) +
+  geom_density_ridges2(alpha = 0.8, size = 0.2, scale = 0.95, stat = "binline", draw_baseline = FALSE, bins = 300, color = "black") +
   theme_Publication_white() +
   scale_color_manual(values = color_npg2) +
   scale_fill_manual(values = color_npg2) +
   scale_x_continuous(limits = c(-50,500)) +
   scale_y_discrete(expand = c(0,0)) +
+  geom_vline(xintercept = 30) +
   ylab("") +
   xlab("3´ UTR length (nt)")
 
 pdf(here("figures/utr3_lengths.pdf"),
     width = 7, height = 7, paper = "special",onefile=FALSE)
 gg_utr3
+dev.off()
+
+#...................................plot 3´UTR of three datasets (each TEX treated) in comparison to reference sets (Fig. 2d)
+gg_utr_corrected <- ggplot(data = utr3_all, aes(y = utr3_length, x = sequencing_set, fill = seq, color = seq)) +
+  geom_split_violin(scale = "width", trim = F, alpha = 0.5, size = 1) +
+  stat_summary(fun.y = median, fun.ymin = median, fun.ymax = median,position = position_dodge(),
+               geom = "crossbar", width = 0.2, color = "black") +
+  scale_y_continuous(limits = c(-20,300), breaks = c(0,50,100,200, 300), expand = c(0,0)) +
+  coord_flip() +
+  theme_Publication_white() +
+  xlab("5´ UTR length (nt)") +
+  xlab("") +
+  scale_fill_manual(values = color_npg2) +
+  scale_color_manual(values = color_npg2)
+
+pdf(here("figures/utr3_lengths_sameasUTR5.pdf"),
+    width = 7, height = 7, paper = "special",onefile=FALSE)
+gg_utr_corrected
 dev.off()
 
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -310,6 +366,27 @@ motif_pfu <- read.table(here("data/meme_data/pfu_motif_terminator.txt"), fill = 
 motif_hvo <- read.table(here("data/meme_data/hvo_motif_terminator.txt"), fill = T, quote = "", sep = "\t") %>%
   dplyr::filter(!grepl("offset", V1)) %>%
   mutate(V1 = gsub("T", "U", V1))
+
+#...............................load sequence output from MEME - names
+motif_ecoli1_name <- read.table(here("data/meme_data/ecoli_motif1_terminator.txt"), fill = T, quote = "", sep = "\t") %>%
+  dplyr::filter(grepl("offset", V1)) %>%
+  mutate(gene = str_split_fixed(str_split_fixed(V1, ">", 2)[,2], "_site_1", 2)[,1]) %>%
+  dplyr::select(gene)
+
+motif_ecoli2_name <- read.table(here("data/meme_data/ecoli_motif2_terminator.txt"), fill = T, quote = "", sep = "\t") %>%
+  dplyr::filter(grepl("offset", V1)) %>%
+  mutate(gene = str_split_fixed(str_split_fixed(V1, ">", 2)[,2], "_site_1", 2)[,1]) %>%
+  dplyr::select(gene)
+
+motif_pfu_name <- read.table(here("data/meme_data/pfu_motif_terminator.txt"), fill = T, quote = "", sep = "\t") %>%
+  dplyr::filter(grepl("offset", V1)) %>%
+  mutate(gene = str_split_fixed(str_split_fixed(V1, ">", 2)[,2], "_site_1", 2)[,1]) %>%
+  dplyr::select(gene)
+
+motif_hvo_name <- read.table(here("data/meme_data/hvo_motif_terminator.txt"), fill = T, quote = "", sep = "\t") %>%
+  dplyr::filter(grepl("offset", V1)) %>%
+  mutate(gene = str_split_fixed(str_split_fixed(V1, ">", 2)[,2], "_site_1", 2)[,1]) %>%
+  dplyr::select(gene)
 
 #...............................load sequence position output from MEME 
 position_ecoli1 <- read.table(here("data/meme_data/ecoli_motif1_terminator.txt"), fill = T, quote = "", sep = "\t") %>%
@@ -539,5 +616,174 @@ hvo_export <- hvo_utr3 %>%
   dplyr::select(GeneID, TTS, strand, utr3_length, old_name, annotation) 
 
 writexl::write_xlsx(x = hvo_export, path = here("tables/tts_tables/tts_hvo.xlsx"))
+
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+# FOLD STABILITY CALCULATION using VIENNA RNAFold
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+#...............................E. COLI MOTIF 1
+deltag_coli_motif1 <- calculate_delta_g_rnafold(input_sequences = ecoli_utr3$delta_g_sequence[ecoli_utr3$gene %in% motif_ecoli1_name$gene],
+                                                setname = "ecoli_set1")
+#...............................E. COLI MOTIF 2
+deltag_coli_motif2 <- calculate_delta_g_rnafold(ecoli_utr3$delta_g_sequence[ecoli_utr3$gene %in% motif_ecoli2$gene],
+                                                "ecoli_set2")
+
+#...............................E. COLI MOTIF TERM-SEQ
+termseq_ecoli_rho <- read_excel(here("data/tts_data/termseq_ecoli.xlsx"), skip = 12, sheet = "Tabls S2") %>%
+  mutate(g = as.numeric(`Fold stability (kacl/mol)`)) %>%
+  dplyr::filter(`Termination mechanism` == "rho-dependent") %>%
+  mutate(set = "ecoli_term_rho") %>%
+  select(g, set)
+
+termseq_ecoli_ind <- read_excel(here("data/tts_data/termseq_ecoli.xlsx"), skip = 12, sheet = "Tabls S2") %>%
+  mutate(g = as.numeric(`Fold stability (kacl/mol)`)) %>%
+  dplyr::filter(`Termination mechanism` == "Independent") %>%
+  mutate(set = "ecoli_term_ind") %>%
+  select(g, set)
+
+#...............................E. COLI MOTIF RANDOM
+deltag_coli_random <- calculate_delta_g_rnafold(substrings_ecoli, "ecoli_random")
+
+#...............................PFU MOTIF
+deltag_pfu_motif <- calculate_delta_g_rnafold(pfu_utr3$delta_g_sequence[pfu_utr3$gene %in% motif_pfu$gene],
+                                              "pfu_set")
+#...............................PFU MOTIF RANDOM
+deltag_pfu_random <- calculate_delta_g_rnafold(substrings_pfu, "pfu_random")
+
+#...............................HVO MOTIF
+deltag_hvo_motif <- calculate_delta_g_rnafold(hvo_utr3$delta_g_sequence[hvo_utr3$gene %in% motif_hvo$gene],
+                                              "hvo_set")
+
+#...............................HVO MOTIF RANDOM
+deltag_hvo_random <- calculate_delta_g_rnafold(substrings_hvo, "hvo_random")
+
+#...............................all
+delta_g_data <- rbind(deltag_coli_motif1 %>% mutate(org = "ecoli"), 
+                      deltag_coli_motif2 %>% mutate(org = "ecoli"),
+                      termseq_ecoli_rho %>% mutate(org = "ecoli"), 
+                      termseq_ecoli_ind %>% mutate(org = "ecoli"), 
+                      deltag_pfu_motif %>% mutate(org = "pfu"), 
+                      deltag_hvo_motif %>% mutate(org = "hvo"), 
+                      deltag_coli_random %>% mutate(org = "ecoli"),
+                      deltag_pfu_random %>% mutate(org = "pfu"),
+                      deltag_hvo_random %>% mutate(org = "hvo"))
+
+#...............................plot (see Supplementary Fig. 7e)
+pdf(here("figures/terminator_delta_g.pdf"),
+    width = 14, height = 7, paper = "special",onefile=FALSE)
+ggplot(data = delta_g_data, aes(x = set, y = g)) +
+  facet_grid(~org) +
+  geom_boxplot(aes(color = set, fill = set),alpha = 0.6, notch = TRUE, color = "black") +
+  scale_fill_npg() +
+  scale_color_npg() +
+  theme_Publication_white() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  scale_y_continuous(limits = c(-30,0),
+                     expand = expand_scale(add = c(0,0)))
+
+dev.off()
+
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+# COMPARISON TTS HVO
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+# > scripts used to compare TTS obtained from native RNA sequencing and short-read Term-seq
+
+#...............................Nanopore TTS
+#.............................add number of reads 
+hvo_reads <- fread(filtered_ids[3]) %>%
+  dplyr::filter(true_utr3 == TRUE) %>%
+  group_by(gene) %>%
+  summarise(counts = n())
+
+#.............................get data
+nano_hvo_m <- hvo_export %>% 
+  dplyr::mutate(seq = "Nanopore") %>%
+  left_join(hvo_reads, by = c("GeneID" = "gene")) %>%
+  dplyr::select(-GeneID, -annotation) %>%
+  mutate(counts = ifelse(is.na(counts) == TRUE, 0, counts)) %>%
+  mutate(treatment = "TEX")
+
+
+#...............................Term-seq TTS
+berkemer <- readxl::read_xlsx(here("data/tts_data/termseq_hvo.xlsx"), skip = 1) %>%
+  dplyr::filter(usGeneType == "CDS", usTTS == -1) %>%
+  dplyr::rename(old_name = usGeneID, utr3_length = `3’UTR length`) %>%
+  dplyr::select(TTS, strand, utr3_length, old_name) %>% dplyr::mutate(seq = "Illumina")
+
+#...............................merge data
+all_hvo <- left_join(nano_hvo_m, berkemer, by = "old_name") %>%
+  dplyr::filter(!is.na(TTS.y)) %>%
+  dplyr::filter(utr3_length.x < 500, utr3_length.x >= 0,utr3_length.y < 500, utr3_length.y >= 0)
+all_hvo$density <- get_density(all_hvo$utr3_length.x, all_hvo$utr3_length.y)
+
+#...............................plot (see Supplementary Fig. 7f)
+pdf(here("figures/tts_hvo_full_berkemer.pdf"),
+    width = 7, height = 7, paper = "special",onefile=FALSE)
+ggplot(data = all_hvo, aes(x = utr3_length.x, y = utr3_length.y, color = density, shape = counts > 5)) +
+  geom_abline(intercept = 0, color = "black", linetype = "dashed", alpha = 0.5) +
+  geom_point(alpha = 0.7, size = 3.5, stroke = 1) +
+  scale_x_continuous(limits = c(0, 500)) +
+  scale_y_continuous(limits = c(0, 500)) +
+  xlab("3`UTR length MinION [nt]") +
+  scale_shape_manual(values=c(21, 15))+
+  ggtitle("") +
+  theme_Publication_white() +
+  scale_color_gradientn(colours = heat_color_npg) +
+  guides(fill = F, alpha = F) + 
+  coord_equal() +
+  stat_cor(method = "spearman", color = "black") +
+  guides(fill = guide_legend(title = "", override.aes = list(alpha=1)), 
+         color = guide_legend(title = ""))
+dev.off()
+
+#...............................plot (see Supplementary Fig. 7g)
+pdf(here("figures/tts_hvo_full_berkemer_zoom.pdf"),
+    width = 7, height = 7, paper = "special",onefile=FALSE)
+ggplot(data = all_hvo, aes(x = utr3_length.x, y = utr3_length.y, color = density, shape = counts > 5)) +
+  geom_abline(intercept = 0, color = "black", linetype = "dashed", alpha = 0.5) +
+  geom_point(alpha = 0.7, size = 3.5, stroke = 1) +
+  scale_x_continuous(limits = c(0, 100)) +
+  scale_y_continuous(limits = c(0, 100)) +
+  xlab("3`UTR length MinION [nt]") +
+  scale_shape_manual(values=c(21, 15))+
+  ggtitle("") +
+  theme_Publication_white() +
+  scale_color_gradientn(colours = heat_color_npg) +
+  guides(fill = F, alpha = F) + 
+  coord_equal() +
+  stat_cor(method = "spearman", color = "black") +
+  guides(fill = guide_legend(title = "", override.aes = list(alpha=1)), 
+         color = guide_legend(title = ""))
+dev.off()
+
+
+#...............................calculate pearson coefficient depending on sequencing depth
+counts <- list()
+cor <- list()
+cor_set <- NULL
+for(i in 1:100){
+  subset <- all_hvo %>%
+    dplyr::filter(utr3_length.x < 500, utr3_length.x >= 0,utr3_length.y < 500, counts >= i)
+  counts[i] <- as.integer(i)
+  cor[i] <- cor(subset$utr3_length.x,
+                subset$utr3_length.y, method = "pearson")
+}
+cor_set <- data.table(counts = unlist(counts), cor = unlist(cor)) %>%
+  as_tibble()
+
+#...............................plot (see Supplementary Fig. 7h)
+pdf(here("figures/TTS_hvo_pearson_depth.pdf"),
+    width = 7, height = 7, paper = "special",onefile=FALSE)
+ggplot(data = cor_set, aes(x = counts, y = cor)) +
+  geom_smooth(se = F, span = 0.75, color = "black") +
+  geom_ribbon(alpha = 0.2,aes(ymin = 0,ymax = predict(loess(cor ~ counts)))) +
+  scale_fill_npg() +
+  scale_color_npg() +
+  theme_Publication_white() +
+  scale_x_continuous(limits = c(1,100),expand = expand_scale(add = c(0,0))) +
+  geom_vline(xintercept = 5, linetype = "dashed")
+dev.off()
+
 
 
