@@ -282,9 +282,9 @@ do
   samtools sort $out_dir/$filename"_reverse.bam" -o $out_dir/$filename"_reverse_sorted.bam" # sort
   samtools depth -a -d 0 $out_dir/$filename"_forward_sorted.bam" >  $out_dir/$filename"_forward_sorted_depth.txt" # calculate number of reads for each position in a strand specific way (no threshold set) and write to bed-like txt file
   samtools depth -a -d 0 $out_dir/$filename"_reverse_sorted.bam" > $out_dir/$filename"_reverse_sorted_depth.txt" # calculate number of reads for each position in a strand specific way (no threshold set) and write to bed-like txt file
-  /Users/felixgrunberger/Documents/scripts/bam2wig $out_dir/$filename"_sorted.bam" # create wig files from bam files, all reads
-  /Users/felixgrunberger/Documents/scripts/bam2wig -s top $out_dir/$filename"_sorted.bam" # create wig files from bam files, top strand
-  /Users/felixgrunberger/Documents/scripts/bam2wig -s bottom $out_dir/$filename"_sorted.bam" # create wig files from bam files, bottom strand
+  ./bam2wig $out_dir/$filename"_sorted.bam" # create wig files from bam files, all reads
+  ./bam2wig -s top $out_dir/$filename"_sorted.bam" # create wig files from bam files, top strand
+  ./bam2wig -s bottom $out_dir/$filename"_sorted.bam" # create wig files from bam files, bottom strand
   echo $filename "mapping finished" 
 done
 ```

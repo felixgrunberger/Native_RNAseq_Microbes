@@ -4,7 +4,8 @@
 packages <- c("ggeconodist", "tidyverse", "here", "ggthemes", "gganimate","writexl",
               "data.table", "ggExtra", "Rsamtools", "GenomicAlignments", "UpSetR",
               "seqTools", "Rsubread", "ape", "DT", "ggpubr", "ggridges", "ggsci",
-              "CoverageView")
+              "CoverageView", "gghalves", "pryr", "fst", "R.utils")
+
 invisible(lapply(packages, require, character.only = TRUE))
 
 #...................................plotting theme
