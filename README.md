@@ -56,12 +56,13 @@ Max-von-Laue-Str. 9, D-60438, Frankfurt, Germany
       - [Single-read analysis](#single-read-analysis)
           - [mRNA](#mrna)
           - [rRNA](#rrna)
+      - [Detection of rRNA processing sites and classification of rRNA
+        intermediates](#detection-of-rrna-processing-sites-and-classification-of-rrna-intermediates)
       - [Modified base detection](#modified-base-detection)
           - [<span>`Tombo`</span>](#tombo)
           - [Pileup mapping assignments](#pileup-mapping-assignments)
   - [Data availability](#data-availability)
       - [Raw sequencing files](#raw-sequencing-files)
-      - [Additional data](#additional-data)
   - [License](#license)
   - [References](#references)
 
@@ -460,7 +461,57 @@ plotted using the
 Reads for plotting of Figure 4 were plotted using the
 [`single_reads_rrnac`](Rscripts/single_reads_rrnc.R) script.
 
+### Detection of rRNA processing sites and classification of rRNA intermediates
+
+To detect processing sites in archaeal and bacterial rDNA operons we
+performed enrichment analysis of read start and end positions. Code is
+provided for the *E. coli* analysis in
+[`rRNA_read_boundaries_ecoli`](Rscripts/rRNA_read_boundaries_ecoli.R).  
+Next, co-occurence analysis was performed by (i) categorizing reads
+according to enriched and literature-expected 5´ positions, (ii)
+selecting all reads that start within +/-1 from the relevant 5´ position
+and (iii) analysing the respective read ends
+([`rRNA_read_coocurence_ecoli`](Rscripts/rRNA_read_cooccurence_ecoli.R)).  
+Exemplary reads of selected categories with enriched connected terminal
+positions were visualised in a genome browser-like view utlizing scripts
+similar to the [`single_reads_rrnac`](Rscripts/single_reads_rrnc.R)
+Rscript. Circular rRNA precursor in archaea were initially observed in a
+subset of reads, which end near/at the 5´cleavage site of the
+bulge-helix-bulge (BHB), but are extensively left-clipped. To
+investigate circ rRNA in more detail, we mapped reads to a permuted
+linear sequence that contained joined 3´BHB/5´-BHB ends.
+
+``` r
+# in R
+
+#...................................haloferax genome/fasta information
+gff <- read.gff(here("data/genome_data/hvo.gff")) %>%
+  dplyr::filter(type == "rRNA")
+
+fasta <- readDNAStringSet(here("data/genome_data/hvo.fasta"))
+
+# > 1598084 5´end BHB
+# > 1599741 3´end BHB
+
+#...................................write permuted 16S circ-rRNA sequence
+circ16_junc_open <- paste(fasta$chr[(gff$end[1]-500):(1599741)],
+                          fasta$chr[(1598084):(gff$start[1]+500)],
+                          sep = "")
+
+write.fasta(sequences = circ16_junc_open, 
+            names = "circ_16S_open",
+            file.out = here("data/nanopore_reanalysis/hvo/circ16S.fasta"))
+```
+
+Reads were mapped using `minimap2`, sorted and indexed using `samtools`.
+BAM files were imported again in R and read start and end positions
+visualised using the `geom_linerange` option in ggplot2
+([`circ_read_plotting`](Rscripts/circ_read_plotting.R)).
+
 ### Modified base detection
+
+We estimated the amount of modified bases using two different
+approaches:
 
 #### [`Tombo`](https://nanoporetech.github.io/tombo/)
 
@@ -476,50 +527,59 @@ The probability of modified bases was calculated using the
 the `text_output browser_files` command and added to the `plot
 genome_locations` plot using the
 [`tombo_fractions_positions`](Rscripts/tombo_fractions_positions.R)
-script. For Fig. 6b the signals were calculated for both samples
+script. For Fig. 6g the signals were calculated for both samples
 (wildtype and deletion mutant) and compared using the
-`control-fast5-basedirs` and `overplot Boxplot` option. For Fig 6c a
-reference data set was created by sorting the reads mapping to the 16S
-rRNA based on the position of the read start (before or after gene
-start), thereby dividing the data set in reads that belong to mature and
-unprocessed 16S rRNAs (script see here:
+`control-fast5-basedirs` and `overplot Boxplot` option. For Fig 7b in
+the manuscript a reference data set was created by sorting the reads
+mapping to the 16S rRNA based on the position of the read start (before
+or after gene start), thereby dividing the data set in reads that belong
+to mature and unprocessed 16S rRNAs (script see here:
 [`filter_rrna_reads_for_tombo`](Rscripts/filter_rrna_reads_for_tombo.R)).
 The selected reads can be extracted using the custom Rscript or using
 the `fast5_subset` module of the
 [ont\_fast5\_api](https://github.com/nanoporetech/ont_fast5_api). Minion
 read names of reads that fulfill certain criteria therefore have to be
-written to a `read_id_list`.  
-The two different models (*de novo* and sample-compare using non-mature
-16S reads as a reference set) were applied to the complete 16S,
-base-modification-probabilities extracted from the tombo output and
-plotted using a custom
-[`tombo_16S_heatmap`](Rscripts/tombo_16S_heatmaps.R) script.
+written to a `read_id_list`. Probabilities were calculated for the
+sample-compare model for all read categories and plotted using custom
+R-scripts ([`tombo_intermediates`](Rscripts/tombo_intermediates.R)).
 
 #### Pileup mapping assignments
 
-For calculating the frequency of correct, deleted and wrong nucleotides
-at a genomic position the function pileup from the Rsamtools package was
-used (<https://rdrr.io/bioc/Rsamtools/>). Plots were generated using the
-[`pileup_mod_bases`](Rscripts/pileup_mod_bases.R) R script. The results
-were compared to known modification sites in 16S rRNA for *Escherichia
-coli* (Boccaletto et al. [2018](#ref-Boccaletto2018)) and *Haloferax
-volcanii* (Grosjean et al. [2008](#ref-Grosjean2008)). Given the high
-degree of conservation of the modifying enzymes in archaea and because
-there was no reference set available for *Pyrococcus furiosus*, the
-results were compared to the five modified positions that are described
-for *H. volcanii* (910, 1352, 1432, 1450/1451 correspond to 938,
-1379,1469,1486/1487 in *P. furiosus*).
+For calculating the frequency of correct, deleted, inserted and wrong
+nucleotides at a genomic position `pysamstats`
+(<https://github.com/alimanfoo/pysamstats>) was used.
+
+``` bash
+#!/bin/bash
+
+#...................................PILEUP BASES FREQUENCY
+dir=/data
+
+#....NOTEX WT
+pysamstats -D 8000000 -S nofilter --window-size=1 -t variation_strand -f $dir/genome_data/hvo.fasta $dir/reanalysis_tombo/hvo/mapped_data/primary_pre_rRNA_wt_sorted.bam > $dir/pileups/primary_pre_rRNA_wt_pileup.tsv
+
+pysamstats -D 8000000 -S nofilter --window-size=1 -t variation_strand -f $dir/genome_data/hvo.fasta $dir/reanalysis_tombo/hvo/mapped_data/closed_circ_rRNA_wt_sorted.bam > $dir/pileups/closed_circ_rRNA_wt_pileup.tsv
+
+pysamstats -D 8000000 -S nofilter --window-size=1 -t variation_strand -f $dir/genome_data/hvo.fasta $dir/reanalysis_tombo/hvo/mapped_data/open_circ_rRNA_wt_sorted.bam > $dir/pileups/open_circ_rRNA_wt_pileup.tsv
+
+pysamstats -D 8000000 -S nofilter --window-size=1 -t variation_strand -f $dir/genome_data/hvo.fasta $dir/reanalysis_tombo/hvo/mapped_data/mature_rRNA_wt_sorted.bam > $dir/pileups/mature_rRNA_wt_pileup.tsv
+```
+
+Plots were generated using custom R scripts
+([`pileup_mod_bases`](Rscripts/pileup_mod_bases.R)). The results were
+compared to known modification sites in 16S rRNA for *H. volcanii*
+(Grosjean et al. [2008](#ref-Grosjean2008)) and *P. furiosus*. Note that
+the positions of modified RNA base modifications for *P. furiosus* are
+derived from a recently published study in *P. abyssi*.
 
 ## Data availability
 
 ### Raw sequencing files
 
-The raw sequencing data in fast5 format will be submitted to the NCBI
+The raw sequencing data in fast5 format have been submitted to the NCBI
 sequence read archive
 (<a href="https://www.ncbi.nlm.nih.gov/sra">SRA</a>) under BioProject
-accession number XXX.
-
-### Additional data
+accession number PRJNA632538.
 
 -----
 
@@ -531,16 +591,6 @@ This project is under the general MIT License - see the
 ## References
 
 <div id="refs" class="references hanging-indent">
-
-<div id="ref-Boccaletto2018">
-
-Boccaletto, Pietro, Magdalena A. MacHnicka, Elzbieta Purta, Pawek
-Pitkowski, Blazej Baginski, Tomasz K. Wirecki, Valérie De Crécy-Lagard,
-et al. 2018. “MODOMICS: A database of RNA modification pathways. 2017
-update.” *Nucleic Acids Research*.
-<https://doi.org/10.1093/nar/gkx1030>.
-
-</div>
 
 <div id="ref-Grosjean2008">
 
