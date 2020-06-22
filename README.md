@@ -435,10 +435,11 @@ A transcriptional start site table for each organism can be found here:
 
 ### Annotation of transcription termination sites (TTS)
 
-Transcription termination sites were estimated in a similar way as start
-sites and is described in the
+Transcription termination sites mapping was performed in a similar way
+as TSS detection and is described in the
 [`transcription_termination_sites`](Rscripts/transcription_termination_sites.R)
-script.  
+script. Additionally, single-gene tracks were analysed using the
+[`tts_single_gene`](Rscripts/tts_single_gene.R) script.  
 A transcriptional termination site table for each organism can be found
 here: [*tts\_tables*](tables/tts_tables/)
 
